@@ -13,6 +13,7 @@
 ### Task 1: Project Scaffolding
 
 **Files:**
+
 - Create: `package.json`
 - Create: `tsconfig.json`
 - Create: `tsup.config.ts`
@@ -74,15 +75,15 @@
 **Step 3: Create tsup.config.ts**
 
 ```typescript
-import { defineConfig } from "tsup";
+import { defineConfig } from 'tsup'
 
 export default defineConfig({
-  entry: ["src/index.ts"],
-  format: ["esm"],
+  entry: ['src/index.ts'],
+  format: ['esm'],
   dts: true,
   clean: true,
-  external: ["isolated-vm"],
-});
+  external: ['isolated-vm'],
+})
 ```
 
 **Step 4: Create .gitignore**
@@ -110,6 +111,7 @@ git commit -m "chore: scaffold sevalla-mcp project"
 ### Task 2: Implement the MCP Server
 
 **Files:**
+
 - Create: `src/index.ts`
 
 **Context for implementer:**
@@ -131,34 +133,34 @@ Key technical details discovered during research:
 **Step 1: Create src/index.ts**
 
 ```typescript
-import { serve } from "@hono/node-server";
-import { StreamableHTTPTransport } from "@hono/mcp";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { CodeMode } from "@robinbraemer/codemode";
-import { registerTools } from "@robinbraemer/codemode/mcp";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
+import { serve } from '@hono/node-server'
+import { StreamableHTTPTransport } from '@hono/mcp'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { CodeMode } from '@robinbraemer/codemode'
+import { registerTools } from '@robinbraemer/codemode/mcp'
+import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 
 // ─── Configuration ──────────────────────────────────────────────────
 
-const PORT = parseInt(process.env.PORT || "3000", 10);
-const SEVALLA_API_BASE = "https://api.sevalla.com";
-const SEVALLA_SPEC_URL = "https://api.sevalla.com/v3/openapi.json";
+const PORT = parseInt(process.env.PORT || '3000', 10)
+const SEVALLA_API_BASE = 'https://api.sevalla.com'
+const SEVALLA_SPEC_URL = 'https://api.sevalla.com/v3/openapi.json'
 
 // ─── Spec Cache ─────────────────────────────────────────────────────
 
-let cachedSpec: Record<string, unknown> | null = null;
+let cachedSpec: Record<string, unknown> | null = null
 
 async function loadSpec(): Promise<Record<string, unknown>> {
-  if (cachedSpec) return cachedSpec;
-  console.log("Fetching OpenAPI spec from", SEVALLA_SPEC_URL);
-  const res = await fetch(SEVALLA_SPEC_URL);
+  if (cachedSpec) return cachedSpec
+  console.log('Fetching OpenAPI spec from', SEVALLA_SPEC_URL)
+  const res = await fetch(SEVALLA_SPEC_URL)
   if (!res.ok) {
-    throw new Error(`Failed to fetch OpenAPI spec: ${res.status} ${res.statusText}`);
+    throw new Error(`Failed to fetch OpenAPI spec: ${res.status} ${res.statusText}`)
   }
-  cachedSpec = (await res.json()) as Record<string, unknown>;
-  console.log("OpenAPI spec loaded successfully");
-  return cachedSpec;
+  cachedSpec = (await res.json()) as Record<string, unknown>
+  console.log('OpenAPI spec loaded successfully')
+  return cachedSpec
 }
 
 // ─── Per-Request MCP Server Factory ─────────────────────────────────
@@ -169,15 +171,15 @@ function createAuthenticatedFetch(token: string) {
     // CodeMode's bridge does new URL(path, baseUrl) which resolves to origin + path
     // e.g., new URL("/applications", "https://api.sevalla.com") → /applications
     // We need to add the /v3 version prefix
-    const url = typeof input === "string" ? new URL(input) : new URL(input.toString());
-    url.pathname = "/v3" + url.pathname;
+    const url = typeof input === 'string' ? new URL(input) : new URL(input.toString())
+    url.pathname = '/v3' + url.pathname
 
-    const headers = new Headers(init?.headers);
-    headers.set("Authorization", `Bearer ${token}`);
-    headers.set("Content-Type", "application/json");
+    const headers = new Headers(init?.headers)
+    headers.set('Authorization', `Bearer ${token}`)
+    headers.set('Content-Type', 'application/json')
 
-    return fetch(url.toString(), { ...init, headers });
-  };
+    return fetch(url.toString(), { ...init, headers })
+  }
 }
 
 function createMcpServer(spec: Record<string, unknown>, token: string): McpServer {
@@ -185,73 +187,67 @@ function createMcpServer(spec: Record<string, unknown>, token: string): McpServe
     spec: spec as any,
     request: createAuthenticatedFetch(token),
     baseUrl: SEVALLA_API_BASE,
-    namespace: "sevalla",
-  });
+    namespace: 'sevalla',
+  })
 
   const server = new McpServer({
-    name: "sevalla",
-    version: "1.0.0",
-  });
+    name: 'sevalla',
+    version: '1.0.0',
+  })
 
-  registerTools(codemode, server);
-  return server;
+  registerTools(codemode, server)
+  return server
 }
 
 // ─── Hono App ───────────────────────────────────────────────────────
 
-const app = new Hono();
+const app = new Hono()
 
 // CORS for browser-based MCP clients
 app.use(
-  "*",
+  '*',
   cors({
-    origin: "*",
-    allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
-    allowHeaders: [
-      "Content-Type",
-      "Authorization",
-      "mcp-session-id",
-      "Last-Event-ID",
-      "mcp-protocol-version",
-    ],
-    exposeHeaders: ["mcp-session-id", "mcp-protocol-version"],
+    origin: '*',
+    allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'mcp-session-id', 'Last-Event-ID', 'mcp-protocol-version'],
+    exposeHeaders: ['mcp-session-id', 'mcp-protocol-version'],
   }),
-);
+)
 
 // Health check
-app.get("/health", (c) => c.json({ status: "ok" }));
+app.get('/health', (c) => c.json({ status: 'ok' }))
 
 // MCP endpoint — stateless: fresh server + transport per request
-app.all("/mcp", async (c) => {
-  const authHeader = c.req.header("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return c.json({ error: "Missing or invalid Authorization header" }, 401);
+app.all('/mcp', async (c) => {
+  const authHeader = c.req.header('authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return c.json({ error: 'Missing or invalid Authorization header' }, 401)
   }
 
-  const token = authHeader.slice(7);
-  const spec = await loadSpec();
+  const token = authHeader.slice(7)
+  const spec = await loadSpec()
 
-  const mcpServer = createMcpServer(spec, token);
+  const mcpServer = createMcpServer(spec, token)
   const transport = new StreamableHTTPTransport({
     sessionIdGenerator: undefined, // stateless mode
-  });
+  })
 
-  await mcpServer.connect(transport);
+  await mcpServer.connect(transport)
 
-  return transport.handleRequest(c);
-});
+  return transport.handleRequest(c)
+})
 
 // ─── Start Server ───────────────────────────────────────────────────
 
-const spec = await loadSpec();
-console.log(`Sevalla MCP server starting on port ${PORT}`);
+const spec = await loadSpec()
+console.log(`Sevalla MCP server starting on port ${PORT}`)
 
 serve({
   fetch: app.fetch,
   port: PORT,
-});
+})
 
-console.log(`Sevalla MCP server listening on http://localhost:${PORT}/mcp`);
+console.log(`Sevalla MCP server listening on http://localhost:${PORT}/mcp`)
 ```
 
 **Step 2: Verify it compiles**
@@ -284,49 +280,50 @@ git commit -m "feat: implement sevalla MCP server with codemode"
 ### Task 3: Add Integration Tests
 
 **Files:**
+
 - Create: `test/server.test.ts`
 - Create: `vitest.config.ts`
 
 **Step 1: Create vitest.config.ts**
 
 ```typescript
-import { defineConfig } from "vitest/config";
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
-    include: ["test/**/*.test.ts"],
+    include: ['test/**/*.test.ts'],
   },
-});
+})
 ```
 
 **Step 2: Write integration tests**
 
 ```typescript
 // test/server.test.ts
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from 'vitest'
 
 // Test the URL rewriting helper in isolation
-describe("createAuthenticatedFetch", () => {
-  it("prepends /v3 to the path", async () => {
-    let capturedUrl = "";
+describe('createAuthenticatedFetch', () => {
+  it('prepends /v3 to the path', async () => {
+    let capturedUrl = ''
     // We test the URL rewriting logic directly
-    const url = new URL("https://api.sevalla.com/applications");
-    url.pathname = "/v3" + url.pathname;
-    expect(url.toString()).toBe("https://api.sevalla.com/v3/applications");
-  });
+    const url = new URL('https://api.sevalla.com/applications')
+    url.pathname = '/v3' + url.pathname
+    expect(url.toString()).toBe('https://api.sevalla.com/v3/applications')
+  })
 
-  it("preserves query parameters", () => {
-    const url = new URL("https://api.sevalla.com/applications?page=1&limit=25");
-    url.pathname = "/v3" + url.pathname;
-    expect(url.toString()).toBe("https://api.sevalla.com/v3/applications?page=1&limit=25");
-  });
+  it('preserves query parameters', () => {
+    const url = new URL('https://api.sevalla.com/applications?page=1&limit=25')
+    url.pathname = '/v3' + url.pathname
+    expect(url.toString()).toBe('https://api.sevalla.com/v3/applications?page=1&limit=25')
+  })
 
-  it("handles nested paths", () => {
-    const url = new URL("https://api.sevalla.com/applications/123/deployments");
-    url.pathname = "/v3" + url.pathname;
-    expect(url.toString()).toBe("https://api.sevalla.com/v3/applications/123/deployments");
-  });
-});
+  it('handles nested paths', () => {
+    const url = new URL('https://api.sevalla.com/applications/123/deployments')
+    url.pathname = '/v3' + url.pathname
+    expect(url.toString()).toBe('https://api.sevalla.com/v3/applications/123/deployments')
+  })
+})
 ```
 
 **Step 3: Run tests**
@@ -346,6 +343,7 @@ git commit -m "test: add URL rewriting tests"
 ### Task 4: Add Dockerfile
 
 **Files:**
+
 - Create: `Dockerfile`
 
 **Step 1: Create multi-stage Dockerfile**
