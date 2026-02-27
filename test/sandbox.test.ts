@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import { deepStrictEqual, strictEqual } from 'node:assert'
-import { resolveRefs, processSpec, extractTags, createRequestBridge } from '../src/sandbox.ts'
+import { resolveRefs, processSpec, extractTags, createRequestBridge, executeInSandbox } from '../src/sandbox.ts'
 
 describe('resolveRefs', () => {
   it('resolves a simple $ref', () => {
@@ -171,5 +171,50 @@ describe('createRequestBridge', () => {
     strictEqual(res.body.headers['authorization'], undefined)
     strictEqual(res.body.headers['cookie'], undefined)
     strictEqual(res.body.headers['x-custom'], 'ok')
+  })
+})
+
+describe('executeInSandbox', () => {
+  it('executes simple code and returns result', async () => {
+    const result = await executeInSandbox('async () => 42', {})
+    deepStrictEqual(result, { result: 42 })
+  })
+
+  it('injects plain data globals', async () => {
+    const result = await executeInSandbox('async () => data.value', { data: { value: 'hello' } })
+    deepStrictEqual(result, { result: 'hello' })
+  })
+
+  it('injects function globals', async () => {
+    const result = await executeInSandbox('async () => await add(2, 3)', {
+      add: (a: number, b: number) => a + b,
+    })
+    deepStrictEqual(result, { result: 5 })
+  })
+
+  it('injects namespace objects with methods', async () => {
+    const result = await executeInSandbox('async () => await api.greet("world")', {
+      api: { greet: (name: string) => `hello ${name}` },
+    })
+    deepStrictEqual(result, { result: 'hello world' })
+  })
+
+  it('returns error for invalid code', async () => {
+    const result = await executeInSandbox('async () => { throw new Error("boom") }', {})
+    strictEqual(result.error, 'boom')
+    strictEqual(result.result, undefined)
+  })
+
+  it('enforces CPU timeout', async () => {
+    const result = await executeInSandbox('async () => { while(true) {} }', {}, { timeoutMs: 100, wallTimeMs: 500 })
+    strictEqual(typeof result.error, 'string')
+  })
+
+  it('has no access to process or require', async () => {
+    const result = await executeInSandbox(
+      'async () => typeof process === "undefined" && typeof require === "undefined"',
+      {},
+    )
+    deepStrictEqual(result, { result: true })
   })
 })
