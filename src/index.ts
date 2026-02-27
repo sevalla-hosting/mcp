@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server'
 import { StreamableHTTPTransport } from '@hono/mcp'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { createTools } from './sandbox.ts'
+import { createTools } from './sandbox/index.ts'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 

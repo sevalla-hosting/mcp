@@ -7,7 +7,7 @@ import {
   createRequestBridge,
   executeInSandbox,
   createTools,
-} from '../src/sandbox.ts'
+} from '../src/sandbox/index.ts'
 
 describe('resolveRefs', () => {
   it('resolves a simple $ref', () => {
