@@ -558,7 +558,7 @@ interface ToolDefinition {
   name: string
   description: string
   inputSchema: Record<string, any>
-  handler: (_args: { code: string }) => Promise<{ content: { type: string; text: string }[]; isError?: boolean }>
+  handler: (_args: { code: string }) => Promise<{ content: { type: 'text'; text: string }[]; isError?: boolean }>
 }
 
 interface CreateToolsOptions {
@@ -575,10 +575,10 @@ interface CreateToolsOptions {
 
 const formatResult = (result: ExecuteResult, maxTokens: number) => {
   if (result.error) {
-    return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true }
+    return { content: [{ type: 'text' as const, text: `Error: ${result.error}` }], isError: true }
   }
   const text = typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2)
-  return { content: [{ type: 'text', text: truncateResponse(text, maxTokens) }] }
+  return { content: [{ type: 'text' as const, text: truncateResponse(text, maxTokens) }] }
 }
 
 export const createTools = (options: CreateToolsOptions): { definitions: ToolDefinition[] } => {

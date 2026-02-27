@@ -1,8 +1,7 @@
 import { serve } from '@hono/node-server'
 import { StreamableHTTPTransport } from '@hono/mcp'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { CodeMode } from '@robinbraemer/codemode'
-import { registerTools } from '@robinbraemer/codemode/mcp'
+import { createTools } from './sandbox.ts'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 
@@ -45,8 +44,8 @@ const createAuthenticatedFetch = (token: string) => {
 }
 
 const createMcpServer = (spec: Record<string, unknown>, token: string): McpServer => {
-  const codemode = new CodeMode({
-    spec: spec as any,
+  const tools = createTools({
+    spec,
     request: createAuthenticatedFetch(token),
     baseUrl: SEVALLA_API_BASE,
     namespace: 'sevalla',
@@ -57,7 +56,12 @@ const createMcpServer = (spec: Record<string, unknown>, token: string): McpServe
     version: '1.0.0',
   })
 
-  registerTools(codemode, server)
+  for (const tool of tools.definitions) {
+    server.registerTool(tool.name, { description: tool.description, inputSchema: tool.inputSchema }, async (args) =>
+      tool.handler(args as { code: string }),
+    )
+  }
+
   return server
 }
 
