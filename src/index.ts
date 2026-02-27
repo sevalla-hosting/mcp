@@ -14,18 +14,23 @@ const SEVALLA_SPEC_URL = "https://api.sevalla.com/v3/openapi.json";
 
 // ─── Spec Cache ─────────────────────────────────────────────────────
 
-let cachedSpec: Record<string, unknown> | null = null;
+let specPromise: Promise<Record<string, unknown>> | null = null;
 
-async function loadSpec(): Promise<Record<string, unknown>> {
-  if (cachedSpec) return cachedSpec;
-  console.log("Fetching OpenAPI spec from", SEVALLA_SPEC_URL);
-  const res = await fetch(SEVALLA_SPEC_URL);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch OpenAPI spec: ${res.status} ${res.statusText}`);
+function loadSpec(): Promise<Record<string, unknown>> {
+  if (!specPromise) {
+    specPromise = (async () => {
+      console.log("Fetching OpenAPI spec from", SEVALLA_SPEC_URL);
+      const res = await fetch(SEVALLA_SPEC_URL);
+      if (!res.ok) {
+        specPromise = null;
+        throw new Error(`Failed to fetch OpenAPI spec: ${res.status} ${res.statusText}`);
+      }
+      const spec = (await res.json()) as Record<string, unknown>;
+      console.log("OpenAPI spec loaded successfully");
+      return spec;
+    })();
   }
-  cachedSpec = (await res.json()) as Record<string, unknown>;
-  console.log("OpenAPI spec loaded successfully");
-  return cachedSpec;
+  return specPromise;
 }
 
 // ─── Per-Request MCP Server Factory ─────────────────────────────────
@@ -98,18 +103,30 @@ app.all("/mcp", async (c) => {
     return c.json({ error: "Missing or invalid Authorization header" }, 401);
   }
 
-  const token = authHeader.slice(7);
-  const spec = await loadSpec();
+  const token = authHeader.slice(7).trim();
+  if (!token) {
+    return c.json({ error: "Empty token" }, 401);
+  }
 
-  const mcpServer = createMcpServer(spec, token);
-  const transport = new StreamableHTTPTransport({
-    sessionIdGenerator: undefined,
-  });
+  let mcpServer: McpServer | undefined;
 
-  await mcpServer.connect(transport);
+  try {
+    const spec = await loadSpec();
+    mcpServer = createMcpServer(spec, token);
+    const transport = new StreamableHTTPTransport({
+      sessionIdGenerator: undefined,
+    });
 
-  const response = await transport.handleRequest(c);
-  return response ?? c.json({ error: "No response from transport" }, 500);
+    await mcpServer.connect(transport);
+
+    const response = await transport.handleRequest(c);
+    return response ?? c.json({ error: "No response from transport" }, 500);
+  } catch (err) {
+    console.error("MCP request error:", err);
+    return c.json({ error: "Internal server error" }, 500);
+  } finally {
+    await mcpServer?.close();
+  }
 });
 
 // ─── Start Server ───────────────────────────────────────────────────
