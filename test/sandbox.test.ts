@@ -1,6 +1,13 @@
 import { describe, it } from 'node:test'
 import { deepStrictEqual, strictEqual } from 'node:assert'
-import { resolveRefs, processSpec, extractTags, createRequestBridge, executeInSandbox } from '../src/sandbox.ts'
+import {
+  resolveRefs,
+  processSpec,
+  extractTags,
+  createRequestBridge,
+  executeInSandbox,
+  createTools,
+} from '../src/sandbox.ts'
 
 describe('resolveRefs', () => {
   it('resolves a simple $ref', () => {
@@ -216,5 +223,86 @@ describe('executeInSandbox', () => {
       {},
     )
     deepStrictEqual(result, { result: true })
+  })
+})
+
+describe('createTools', () => {
+  const mockSpec = {
+    servers: [{ url: 'https://api.example.com/v1' }],
+    paths: {
+      '/items': {
+        get: { summary: 'List items', tags: ['items'] },
+        post: { summary: 'Create item', tags: ['items'], requestBody: { required: true } },
+      },
+      '/users': {
+        get: { summary: 'List users', tags: ['users'] },
+      },
+    },
+    components: {},
+  }
+
+  it('returns two tool definitions (search and execute)', () => {
+    const tools = createTools({
+      spec: mockSpec,
+      request: async () => new Response('{}'),
+      baseUrl: 'https://api.example.com',
+      namespace: 'myapi',
+    })
+    strictEqual(tools.definitions.length, 2)
+    strictEqual(tools.definitions[0].name, 'search')
+    strictEqual(tools.definitions[1].name, 'execute')
+  })
+
+  it('search tool description includes tags and endpoint count', () => {
+    const tools = createTools({
+      spec: mockSpec,
+      request: async () => new Response('{}'),
+      baseUrl: 'https://api.example.com',
+      namespace: 'myapi',
+    })
+    const searchDesc = tools.definitions[0].description
+    strictEqual(searchDesc.includes('items'), true)
+    strictEqual(searchDesc.includes('users'), true)
+    strictEqual(searchDesc.includes('Endpoints: 2'), true)
+  })
+
+  it('execute tool description includes namespace', () => {
+    const tools = createTools({
+      spec: mockSpec,
+      request: async () => new Response('{}'),
+      baseUrl: 'https://api.example.com',
+      namespace: 'myapi',
+    })
+    const execDesc = tools.definitions[1].description
+    strictEqual(execDesc.includes('myapi'), true)
+  })
+
+  it('search tool handler executes code against processed spec', async () => {
+    const tools = createTools({
+      spec: mockSpec,
+      request: async () => new Response('{}'),
+      baseUrl: 'https://api.example.com',
+      namespace: 'myapi',
+    })
+    const result = await tools.definitions[0].handler({
+      code: 'async () => Object.keys(spec.paths).length',
+    })
+    strictEqual(result.content[0].text, '2')
+  })
+
+  it('inputSchema uses plain JSON schema', () => {
+    const tools = createTools({
+      spec: mockSpec,
+      request: async () => new Response('{}'),
+      baseUrl: 'https://api.example.com',
+      namespace: 'myapi',
+    })
+    deepStrictEqual(tools.definitions[0].inputSchema, {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'JavaScript async arrow function to search the `spec` object' },
+      },
+      required: ['code'],
+    })
   })
 })
