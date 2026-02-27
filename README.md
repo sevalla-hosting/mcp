@@ -38,7 +38,7 @@ Connect your MCP client (Claude Desktop, Cursor, Windsurf, etc.) to the hosted s
 }
 ```
 
-Get your API key from [app.sevalla.com/api-keys](https://app.sevalla.com/api-keys).
+Get your API key from [app.sevalla.com/api-keys](https://app.sevalla.com/api-keys). Full API reference at [api-docs.sevalla.com](https://api-docs.sevalla.com) (base URL: `api.sevalla.com/v3`).
 
 That's it. Your AI agent can now manage your Sevalla infrastructure.
 
@@ -108,9 +108,9 @@ docker run -p 3000:3000 sevalla-mcp
 | `PORT`                | `3000`  | Server port                    |
 | `SHUTDOWN_TIMEOUT_MS` | `30000` | Graceful shutdown timeout (ms) |
 
-### Kubernetes
+### Health Check & Graceful Shutdown
 
-The server handles `SIGTERM`/`SIGINT` for graceful shutdown during rolling updates. Use `/health` as your readiness probe — it returns `503` during shutdown to drain traffic before the pod terminates.
+The `/health` endpoint returns `200` when the server is ready and `503` during shutdown. The server handles `SIGTERM`/`SIGINT` to gracefully drain in-flight requests before exiting.
 
 ## Development
 
