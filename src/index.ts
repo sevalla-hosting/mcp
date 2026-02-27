@@ -108,13 +108,12 @@ app.all("/mcp", async (c) => {
     return c.json({ error: "Empty token" }, 401);
   }
 
-  let mcpServer: McpServer | undefined;
-
   try {
     const spec = await loadSpec();
-    mcpServer = createMcpServer(spec, token);
+    const mcpServer = createMcpServer(spec, token);
     const transport = new StreamableHTTPTransport({
       sessionIdGenerator: undefined,
+      enableJsonResponse: true,
     });
 
     await mcpServer.connect(transport);
@@ -124,8 +123,6 @@ app.all("/mcp", async (c) => {
   } catch (err) {
     console.error("MCP request error:", err);
     return c.json({ error: "Internal server error" }, 500);
-  } finally {
-    await mcpServer?.close();
   }
 });
 
