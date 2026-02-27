@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import { deepStrictEqual, strictEqual } from 'node:assert'
-import { resolveRefs, processSpec, extractTags } from '../src/sandbox.ts'
+import { resolveRefs, processSpec, extractTags, createRequestBridge } from '../src/sandbox.ts'
 
 describe('resolveRefs', () => {
   it('resolves a simple $ref', () => {
@@ -91,5 +91,85 @@ describe('extractTags', () => {
   it('returns empty array when no tags', () => {
     const spec = { paths: { '/a': { get: { summary: 'no tags' } } } }
     deepStrictEqual(extractTags(spec), [])
+  })
+})
+
+describe('createRequestBridge', () => {
+  const mockHandler = async (url: string, init?: RequestInit): Promise<Response> => {
+    return new Response(JSON.stringify({ url, method: init?.method }), {
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
+  it('builds URL from base and path', async () => {
+    const bridge = createRequestBridge(mockHandler, 'https://api.example.com')
+    const res = await bridge({ method: 'GET', path: '/items' })
+    strictEqual(res.body.url, 'https://api.example.com/items')
+  })
+
+  it('appends query parameters', async () => {
+    const bridge = createRequestBridge(mockHandler, 'https://api.example.com')
+    const res = await bridge({ method: 'GET', path: '/items', query: { page: 1, limit: 25 } })
+    strictEqual(res.body.url, 'https://api.example.com/items?page=1&limit=25')
+  })
+
+  it('rejects invalid HTTP methods', async () => {
+    const bridge = createRequestBridge(mockHandler, 'https://api.example.com')
+    try {
+      await bridge({ method: 'TRACE' as any, path: '/items' })
+      throw new Error('should have thrown')
+    } catch (e: any) {
+      strictEqual(e.message.includes('not allowed'), true)
+    }
+  })
+
+  it('rejects paths with protocol', async () => {
+    const bridge = createRequestBridge(mockHandler, 'https://api.example.com')
+    try {
+      await bridge({ method: 'GET', path: 'https://evil.com/items' })
+      throw new Error('should have thrown')
+    } catch (e: any) {
+      strictEqual(e.message.includes('Invalid path'), true)
+    }
+  })
+
+  it('rejects paths starting with //', async () => {
+    const bridge = createRequestBridge(mockHandler, 'https://api.example.com')
+    try {
+      await bridge({ method: 'GET', path: '//evil.com' })
+      throw new Error('should have thrown')
+    } catch (e: any) {
+      strictEqual(e.message.includes('Invalid path'), true)
+    }
+  })
+
+  it('enforces request count limit', async () => {
+    const bridge = createRequestBridge(mockHandler, 'https://api.example.com', { maxRequests: 2 })
+    await bridge({ method: 'GET', path: '/a' })
+    await bridge({ method: 'GET', path: '/b' })
+    try {
+      await bridge({ method: 'GET', path: '/c' })
+      throw new Error('should have thrown')
+    } catch (e: any) {
+      strictEqual(e.message.includes('limit'), true)
+    }
+  })
+
+  it('filters blocked headers', async () => {
+    const handler = async (_url: string, init?: RequestInit): Promise<Response> => {
+      const headers = Object.fromEntries(new Headers(init?.headers).entries())
+      return new Response(JSON.stringify({ headers }), {
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+    const bridge = createRequestBridge(handler, 'https://api.example.com')
+    const res = await bridge({
+      method: 'GET',
+      path: '/items',
+      headers: { Authorization: 'Bearer secret', 'X-Custom': 'ok', Cookie: 'bad' },
+    })
+    strictEqual(res.body.headers['authorization'], undefined)
+    strictEqual(res.body.headers['cookie'], undefined)
+    strictEqual(res.body.headers['x-custom'], 'ok')
   })
 })
