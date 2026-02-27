@@ -290,19 +290,16 @@ describe('createTools', () => {
     strictEqual(result.content[0].text, '2')
   })
 
-  it('inputSchema uses plain JSON schema', () => {
+  it('inputSchema is a Zod schema with code property', () => {
     const tools = createTools({
       spec: mockSpec,
       request: async () => new Response('{}'),
       baseUrl: 'https://api.example.com',
       namespace: 'myapi',
     })
-    deepStrictEqual(tools.definitions[0].inputSchema, {
-      type: 'object',
-      properties: {
-        code: { type: 'string', description: 'JavaScript async arrow function to search the `spec` object' },
-      },
-      required: ['code'],
-    })
+    const schema = tools.definitions[0].inputSchema
+    strictEqual(typeof schema.parse, 'function')
+    const result = schema.parse({ code: 'async () => 42' })
+    deepStrictEqual(result, { code: 'async () => 42' })
   })
 })

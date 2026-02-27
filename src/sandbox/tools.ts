@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import type { BridgeRequest, RequestHandler } from './bridge.ts'
 import { createRequestBridge } from './bridge.ts'
 import { executeInSandbox, type ExecuteResult, type SandboxOptions } from './isolate.ts'
@@ -99,16 +100,9 @@ async () => {
   return {
     name: 'search',
     description: parts.join('\n\n'),
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        code: {
-          type: 'string' as const,
-          description: 'JavaScript async arrow function to search the `spec` object',
-        },
-      },
-      required: ['code'],
-    },
+    inputSchema: z.object({
+      code: z.string().describe('JavaScript async arrow function to search the `spec` object'),
+    }),
   }
 }
 
@@ -168,23 +162,16 @@ async () => {
   );
   return details.map(d => d.body);
 }`,
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        code: {
-          type: 'string' as const,
-          description: `JavaScript async arrow function that uses \`${namespace}.request()\` to make API calls`,
-        },
-      },
-      required: ['code'],
-    },
+    inputSchema: z.object({
+      code: z.string().describe(`JavaScript async arrow function that uses \`${namespace}.request()\` to make API calls`),
+    }),
   }
 }
 
 export interface ToolDefinition {
   name: string
   description: string
-  inputSchema: Record<string, any>
+  inputSchema: z.ZodObject<any>
   handler: (_args: { code: string }) => Promise<{ content: { type: 'text'; text: string }[]; isError?: boolean }>
 }
 
