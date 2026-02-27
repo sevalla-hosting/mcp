@@ -6,17 +6,15 @@ import { registerTools } from '@robinbraemer/codemode/mcp'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 
-// ─── Configuration ──────────────────────────────────────────────────
-
 const PORT = parseInt(process.env.PORT || '3000', 10)
 const SEVALLA_API_BASE = 'https://api.sevalla.com'
 const SEVALLA_SPEC_URL = 'https://api.sevalla.com/v3/openapi.json'
-
-// ─── Spec Cache ─────────────────────────────────────────────────────
+const SHUTDOWN_TIMEOUT_MS = parseInt(process.env.SHUTDOWN_TIMEOUT_MS || '30000', 10)
 
 let specPromise: Promise<Record<string, unknown>> | null = null
+let isShuttingDown = false
 
-function loadSpec(): Promise<Record<string, unknown>> {
+const loadSpec = (): Promise<Record<string, unknown>> => {
   if (!specPromise) {
     specPromise = (async () => {
       console.log('Fetching OpenAPI spec from', SEVALLA_SPEC_URL)
@@ -33,9 +31,7 @@ function loadSpec(): Promise<Record<string, unknown>> {
   return specPromise
 }
 
-// ─── Per-Request MCP Server Factory ─────────────────────────────────
-
-function createAuthenticatedFetch(token: string) {
+const createAuthenticatedFetch = (token: string) => {
   return async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? new URL(input) : new URL(input.toString())
     url.pathname = '/v3' + url.pathname
@@ -48,7 +44,7 @@ function createAuthenticatedFetch(token: string) {
   }
 }
 
-function createMcpServer(spec: Record<string, unknown>, token: string): McpServer {
+const createMcpServer = (spec: Record<string, unknown>, token: string): McpServer => {
   const codemode = new CodeMode({
     spec: spec as any,
     request: createAuthenticatedFetch(token),
@@ -65,11 +61,8 @@ function createMcpServer(spec: Record<string, unknown>, token: string): McpServe
   return server
 }
 
-// ─── Hono App ───────────────────────────────────────────────────────
-
 const app = new Hono()
 
-// CORS for browser-based MCP clients
 app.use(
   '*',
   cors({
@@ -80,11 +73,18 @@ app.use(
   }),
 )
 
-// Health check
-app.get('/health', (c) => c.json({ status: 'ok' }))
+app.get('/health', (c) => {
+  if (isShuttingDown) {
+    return c.json({ status: 'shutting_down' }, 503)
+  }
+  return c.json({ status: 'ok' })
+})
 
-// MCP endpoint — stateless: fresh server + transport per request
-app.all('/mcp', async (c) => {
+app.all('/', async (c) => {
+  if (isShuttingDown) {
+    return c.json({ error: 'Server is shutting down' }, 503)
+  }
+
   const authHeader = c.req.header('authorization')
   if (!authHeader?.startsWith('Bearer ')) {
     return c.json({ error: 'Missing or invalid Authorization header' }, 401)
@@ -113,14 +113,34 @@ app.all('/mcp', async (c) => {
   }
 })
 
-// ─── Start Server ───────────────────────────────────────────────────
-
 await loadSpec()
 console.log(`Sevalla MCP server starting on port ${PORT}`)
 
-serve({
+const server = serve({
   fetch: app.fetch,
   port: PORT,
 })
 
-console.log(`Sevalla MCP server listening on http://localhost:${PORT}/mcp`)
+const shutdown = (signal: string) => {
+  if (isShuttingDown) {
+    return
+  }
+  isShuttingDown = true
+  console.log(`${signal} received, starting graceful shutdown...`)
+
+  const forceExit = setTimeout(() => {
+    console.error('Graceful shutdown timed out, forcing exit')
+    process.exit(1)
+  }, SHUTDOWN_TIMEOUT_MS)
+  forceExit.unref()
+
+  server.close(() => {
+    console.log('All connections closed, exiting')
+    process.exit(0)
+  })
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+
+console.log(`Sevalla MCP server listening on http://localhost:${PORT}`)

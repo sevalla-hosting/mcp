@@ -3,38 +3,32 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsup",
-    "start": "node dist/index.js",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "dev": "node --watch src/index.ts",
+    "start": "node src/index.ts",
+    "test": "node --test test/**/*.test.ts",
     "check:code": "tsc --noEmit --skipLibCheck && oxlint && oxfmt --check",
     "lint": "oxlint",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check"
   },
   "dependencies": {
-    "@hono/mcp": "^0.2.3",
-    "@hono/node-server": "^1.13.0",
-    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@hono/mcp": "^0.2.4",
+    "@hono/node-server": "^1.19.9",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@robinbraemer/codemode": "^0.1.4",
-    "hono": "^4.7.0",
+    "hono": "^4.12.3",
     "isolated-vm": "^6.0.2",
-    "zod": "^3.24.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.3.2",
     "eslint-plugin-unused-imports": "^4.4.1",
-    "oxfmt": "^0.28.0",
-    "oxlint": "^1.43.0",
-    "tsup": "^8.0.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "oxfmt": "^0.35.0",
+    "oxlint": "^1.50.0",
+    "typescript": "^5.9.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild",
       "isolated-vm"
     ]
   }

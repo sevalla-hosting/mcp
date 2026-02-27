@@ -1,37 +1,28 @@
-# Build stage
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# isolated-vm needs build tools
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
+RUN pnpm prune --prod
 
-COPY tsconfig.json tsup.config.ts ./
-COPY src/ src/
-RUN pnpm build
+FROM node:24-alpine
 
-# Production stage
-FROM node:22-alpine
-
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# isolated-vm runtime dependency
 RUN apk add --no-cache libstdc++
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+COPY --from=builder /app/node_modules ./node_modules
+COPY package.json ./
+COPY src/ src/
 
-COPY --from=builder /app/dist ./dist
+USER node
 
 EXPOSE 3000
 
 ENV NODE_ENV=production
 
-CMD ["node", "dist/index.js"]
+CMD ["node", "src/index.ts"]
