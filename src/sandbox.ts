@@ -203,23 +203,27 @@ const filterHeaders = (headers: Record<string, string>, allowedHeaders?: string[
 
 const readResponseWithLimit = async (response: Response, maxBytes: number): Promise<string> => {
   if (!response.body) {
-    return ''
+    return await response.text()
   }
   const reader = response.body.getReader()
-  const chunks: Uint8Array[] = []
-  let totalBytes = 0
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) {
-      break
+  try {
+    const chunks: Uint8Array[] = []
+    let totalBytes = 0
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        break
+      }
+      totalBytes += value.byteLength
+      if (totalBytes > maxBytes) {
+        throw new Error(`Response body exceeds ${maxBytes} byte limit`)
+      }
+      chunks.push(value)
     }
-    totalBytes += value.byteLength
-    if (totalBytes > maxBytes) {
-      throw new Error(`Response body exceeds ${maxBytes} byte limit`)
-    }
-    chunks.push(value)
+    return new TextDecoder().decode(Buffer.concat(chunks))
+  } finally {
+    reader.releaseLock()
   }
-  return new TextDecoder().decode(Buffer.concat(chunks))
 }
 
 export const createRequestBridge = (
@@ -267,7 +271,14 @@ export const createRequestBridge = (
 
     const text = await readResponseWithLimit(response, maxResponseBytes)
     const contentType = response.headers.get('content-type') ?? ''
-    const body = contentType.includes('application/json') ? JSON.parse(text) : text
+    let body: any = text
+    if (contentType.includes('application/json')) {
+      try {
+        body = JSON.parse(text)
+      } catch {
+        // fallback to raw text
+      }
+    }
 
     return { status: response.status, headers: responseHeaders, body }
   }
@@ -577,7 +588,8 @@ const formatResult = (result: ExecuteResult, maxTokens: number) => {
   if (result.error) {
     return { content: [{ type: 'text' as const, text: `Error: ${result.error}` }], isError: true }
   }
-  const text = typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2)
+  const raw = typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2)
+  const text = raw ?? 'undefined'
   return { content: [{ type: 'text' as const, text: truncateResponse(text, maxTokens) }] }
 }
 
