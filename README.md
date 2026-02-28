@@ -2,7 +2,7 @@
 
 # Sevalla MCP Server
 
-**Give AI agents full access to the Sevalla PaaS API — with just 2 tools.**
+**Give AI agents full access to the Sevalla PaaS API. Just 2 tools.**
 
 [![CI](https://github.com/sevalla-hosting/mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/sevalla-hosting/mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -14,12 +14,20 @@
 
 ---
 
-A remote [Model Context Protocol](https://modelcontextprotocol.io/) server powered by [codemode](https://github.com/cnap-tech/codemode). Instead of registering one MCP tool per API endpoint (~200 endpoints), codemode collapses them into just 2:
+A remote [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes the entire Sevalla PaaS API through just 2 tools instead of ~200. AI agents write JavaScript that runs in sandboxed V8 isolates to discover and call any API endpoint on demand.
 
-- **`search`** — Query the OpenAPI spec to discover endpoints, parameters, and schemas
-- **`execute`** — Run JavaScript in a sandboxed V8 isolate that calls the API via `sevalla.request()`
+- **`search`** - query the OpenAPI spec to discover endpoints, parameters, and schemas
+- **`execute`** - run JavaScript in a sandboxed V8 isolate that calls the API via `sevalla.request()`
 
 This reduces context window usage by ~99% compared to traditional one-tool-per-endpoint approaches.
+
+## Background
+
+Cloudflare came up with the [Code Mode MCP](https://blog.cloudflare.com/code-mode-mcp/) pattern: instead of registering one tool per API endpoint, you give the agent two tools. One to search the API spec, one to execute code against it. Simple idea, massive difference in practice.
+
+As a [Cloudflare partner](https://www.sevalla.com), we took this pattern and built it for the Sevalla PaaS API. The sandbox architecture and tool design are inspired by [codemode](https://github.com/cnap-tech/codemode), an open-source implementation of the same pattern.
+
+Any MCP client can now manage Sevalla infrastructure through conversation. The AI writes and runs API calls in a secure V8 sandbox. No SDK needed, no boilerplate, no 200-tool context window.
 
 ## Quick Start
 
@@ -29,7 +37,7 @@ Connect your MCP client (Claude Desktop, Cursor, Windsurf, etc.) to the hosted s
 {
   "mcpServers": {
     "sevalla": {
-      "url": "https://mcp.sevalla.com",
+      "url": "https://mcp.sevalla.com/mcp",
       "headers": {
         "Authorization": "Bearer <your-sevalla-api-key>"
       }
@@ -38,7 +46,7 @@ Connect your MCP client (Claude Desktop, Cursor, Windsurf, etc.) to the hosted s
 }
 ```
 
-Get your API key from [app.sevalla.com/api-keys](https://app.sevalla.com/api-keys). Full API reference at [api-docs.sevalla.com](https://api-docs.sevalla.com) (base URL: `api.sevalla.com/v3`).
+Get your API key from [app.sevalla.com/api-keys](https://app.sevalla.com/api-keys). Sevalla API keys support granular permissions, so you can create a read-only key if you want your AI agent to query infrastructure without being able to modify it. Full API reference at [api-docs.sevalla.com](https://api-docs.sevalla.com) (base URL: `api.sevalla.com/v3`).
 
 That's it. Your AI agent can now manage your Sevalla infrastructure.
 
@@ -47,7 +55,7 @@ That's it. Your AI agent can now manage your Sevalla infrastructure.
 ```
 MCP Client (Claude, Cursor, etc.)
        │
-       │  POST /
+       │  POST /mcp
        │  Authorization: Bearer <sevalla-api-key>
        ▼
 ┌─────────────────────────────┐
@@ -85,7 +93,7 @@ const apps = await sevalla.request({
 
 ## Self-Hosting
 
-**Requirements:** Node.js 24+ (TypeScript runs natively — no build step)
+**Requirements:** Node.js 24+ (TypeScript runs natively, no build step)
 
 ```bash
 git clone https://github.com/sevalla-hosting/mcp.git

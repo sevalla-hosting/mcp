@@ -163,7 +163,9 @@ async () => {
   return details.map(d => d.body);
 }`,
     inputSchema: z.object({
-      code: z.string().describe(`JavaScript async arrow function that uses \`${namespace}.request()\` to make API calls`),
+      code: z
+        .string()
+        .describe(`JavaScript async arrow function that uses \`${namespace}.request()\` to make API calls`),
     }),
   }
 }

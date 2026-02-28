@@ -84,7 +84,7 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok' })
 })
 
-app.all('/', async (c) => {
+app.all('/mcp', async (c) => {
   if (isShuttingDown) {
     return c.json({ error: 'Server is shutting down' }, 503)
   }
