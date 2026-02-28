@@ -57,8 +57,10 @@ const createMcpServer = (spec: Record<string, unknown>, token: string): McpServe
   })
 
   for (const tool of tools.definitions) {
-    server.registerTool(tool.name, { description: tool.description, inputSchema: tool.inputSchema }, async (args) =>
-      tool.handler(args as { code: string }),
+    server.registerTool(
+      tool.name,
+      { description: tool.description, inputSchema: tool.inputSchema },
+      async (args: Record<string, unknown>) => tool.handler(args as { code: string }),
     )
   }
 

@@ -23,6 +23,9 @@ importers:
       isolated-vm:
         specifier: ^6.0.2
         version: 6.0.2
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@types/node':
         specifier: ^25.3.2
