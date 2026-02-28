@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-24+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![MCP](https://img.shields.io/badge/MCP-StreamableHTTP-8B5CF6)](https://modelcontextprotocol.io/)
-[![Hosted at](https://img.shields.io/badge/Hosted_at-mcp.sevalla.com-FF6723)](https://mcp.sevalla.com)
+[![Hosted at](https://img.shields.io/badge/Hosted_at-mcp.sevalla.com-FF6723)](https://mcp.sevalla.com/mcp)
 
 </div>
 
