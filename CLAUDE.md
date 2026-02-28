@@ -26,7 +26,7 @@ pnpm check:code       # Full check: tsc + oxlint + oxfmt
 
 Single-file server (`src/index.ts`) with this request flow:
 
-1. MCP client sends POST to `/` with `Authorization: Bearer <sevalla-api-key>`
+1. MCP client sends POST to `/mcp` with `Authorization: Bearer <sevalla-api-key>`
 2. Hono extracts the Bearer token
 3. **Per-request isolation**: A fresh `McpServer` + `CodeMode` + `StreamableHTTPTransport` is created for each request, binding the user's API key to the fetch handler. This ensures auth isolation between concurrent users.
 4. CodeMode registers 2 tools: `search` (query the OpenAPI spec) and `execute` (call the API via `sevalla.request(...)`)
