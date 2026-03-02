@@ -171,6 +171,10 @@ export const createOAuthRouter = () => {
 
     authCodes.delete(code)
 
+    if (stored.expiresAt <= Date.now()) {
+      return c.json({ error: 'invalid_grant' }, 400)
+    }
+
     if (stored.redirectUri !== redirectUri || stored.clientId !== clientId) {
       return c.json({ error: 'invalid_grant' }, 400)
     }

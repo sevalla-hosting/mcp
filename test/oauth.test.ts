@@ -377,6 +377,63 @@ describe('POST /oauth/token', () => {
     authCodes.delete('redirect-fail-code')
   })
 
+  it('rejects expired auth code', async () => {
+    const verifier = 'test-verifier-for-expiry'
+    const challenge = createHash('sha256').update(verifier).digest('base64url')
+
+    authCodes.set('expired-auth-code', {
+      token: 'svl_token',
+      codeChallenge: challenge,
+      redirectUri: 'http://localhost:8080/callback',
+      clientId: 'test-client',
+      expiresAt: Date.now() - 1000,
+    })
+
+    const res = await app.request('/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: 'expired-auth-code',
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: 'test-client',
+        code_verifier: verifier,
+      }).toString(),
+    })
+
+    strictEqual(res.status, 400)
+    const body = await res.json()
+    strictEqual(body.error, 'invalid_grant')
+  })
+
+  it('rejects mismatched client_id', async () => {
+    const verifier = 'test-verifier-for-client'
+    const challenge = createHash('sha256').update(verifier).digest('base64url')
+
+    authCodes.set('client-mismatch-code', {
+      token: 'svl_token',
+      codeChallenge: challenge,
+      redirectUri: 'http://localhost:8080/callback',
+      clientId: 'client-a',
+      expiresAt: Date.now() + 60_000,
+    })
+
+    const res = await app.request('/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: 'client-mismatch-code',
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: 'client-b',
+        code_verifier: verifier,
+      }).toString(),
+    })
+
+    strictEqual(res.status, 400)
+    authCodes.delete('client-mismatch-code')
+  })
+
   it('rejects unknown auth code', async () => {
     const res = await app.request('/oauth/token', {
       method: 'POST',
