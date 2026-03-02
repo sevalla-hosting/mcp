@@ -1,10 +1,11 @@
 import { serve } from '@hono/node-server'
 import { StreamableHTTPTransport } from '@hono/mcp'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { createTools } from './sandbox/index.ts'
+import { createTools } from './sandbox'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { cors } from 'hono/cors'
+import { createOAuthRouter } from './oauth.ts'
 
 const PORT = parseInt(process.env.PORT || '3000', 10)
 const SEVALLA_API_BASE = 'https://api.sevalla.com'
@@ -74,7 +75,7 @@ app.use(
   '*',
   cors({
     origin: '*',
-    allowMethods: ['POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'mcp-session-id', 'Last-Event-ID', 'mcp-protocol-version'],
     exposeHeaders: ['mcp-session-id', 'mcp-protocol-version'],
   }),
@@ -87,6 +88,8 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok' })
 })
 
+app.route('', createOAuthRouter())
+
 app.get('/mcp', (c) => c.body(null, { status: 405, headers: { Allow: 'POST' } }))
 app.delete('/mcp', (c) => c.body(null, { status: 405, headers: { Allow: 'POST' } }))
 
@@ -97,12 +100,18 @@ app.post('/mcp', async (c) => {
 
   const authHeader = c.req.header('authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    return c.json({ error: 'Missing or invalid Authorization header' }, 401)
+    const publicUrl = process.env.PUBLIC_URL || 'https://mcp.sevalla.com'
+    return c.json({ error: 'Missing or invalid Authorization header' }, 401, {
+      'WWW-Authenticate': `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
+    })
   }
 
   const token = authHeader.slice(7).trim()
   if (!token) {
-    return c.json({ error: 'Empty token' }, 401)
+    const publicUrl = process.env.PUBLIC_URL || 'https://mcp.sevalla.com'
+    return c.json({ error: 'Empty token' }, 401, {
+      'WWW-Authenticate': `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
+    })
   }
 
   try {
