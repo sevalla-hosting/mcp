@@ -1,7 +1,15 @@
 import { describe, it } from 'node:test'
 import { strictEqual } from 'node:assert'
 import { createHash } from 'node:crypto'
-import { verifyPkce, generateAuthCode, pendingAuthorizations, authCodes, cleanupExpired } from '../src/oauth.ts'
+import { Hono } from 'hono'
+import {
+  verifyPkce,
+  generateAuthCode,
+  pendingAuthorizations,
+  authCodes,
+  cleanupExpired,
+  createOAuthRouter,
+} from '../src/oauth.ts'
 
 describe('verifyPkce', () => {
   it('returns true for a valid verifier-challenge pair', () => {
@@ -80,5 +88,33 @@ describe('auth store', () => {
     cleanupExpired()
     strictEqual(pendingAuthorizations.has('EXPIRED'), false)
     strictEqual(authCodes.has('expired-code'), false)
+  })
+})
+
+describe('well-known endpoints', () => {
+  const app = new Hono()
+  app.route('', createOAuthRouter())
+
+  it('GET /.well-known/oauth-protected-resource returns resource metadata', async () => {
+    process.env.PUBLIC_URL = 'https://mcp.test.com'
+    const res = await app.request('/.well-known/oauth-protected-resource')
+    strictEqual(res.status, 200)
+    const body = await res.json()
+    strictEqual(body.resource, 'https://mcp.test.com/mcp')
+    strictEqual(body.authorization_servers[0], 'https://mcp.test.com')
+    delete process.env.PUBLIC_URL
+  })
+
+  it('GET /.well-known/oauth-authorization-server returns AS metadata', async () => {
+    process.env.PUBLIC_URL = 'https://mcp.test.com'
+    const res = await app.request('/.well-known/oauth-authorization-server')
+    strictEqual(res.status, 200)
+    const body = await res.json()
+    strictEqual(body.issuer, 'https://mcp.test.com')
+    strictEqual(body.authorization_endpoint, 'https://mcp.test.com/oauth/authorize')
+    strictEqual(body.token_endpoint, 'https://mcp.test.com/oauth/token')
+    strictEqual(body.registration_endpoint, 'https://mcp.test.com/oauth/register')
+    strictEqual(body.code_challenge_methods_supported[0], 'S256')
+    delete process.env.PUBLIC_URL
   })
 })
