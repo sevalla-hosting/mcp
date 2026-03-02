@@ -74,7 +74,7 @@ app.use(
   '*',
   cors({
     origin: '*',
-    allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    allowMethods: ['POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'mcp-session-id', 'Last-Event-ID', 'mcp-protocol-version'],
     exposeHeaders: ['mcp-session-id', 'mcp-protocol-version'],
   }),
@@ -87,7 +87,10 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok' })
 })
 
-app.all('/mcp', async (c) => {
+app.get('/mcp', (c) => c.body(null, { status: 405, headers: { Allow: 'POST' } }))
+app.delete('/mcp', (c) => c.body(null, { status: 405, headers: { Allow: 'POST' } }))
+
+app.post('/mcp', async (c) => {
   if (isShuttingDown) {
     return c.json({ error: 'Server is shutting down' }, 503)
   }
@@ -110,9 +113,12 @@ app.all('/mcp', async (c) => {
       enableJsonResponse: true,
     })
 
+    transport.onerror = (err) => console.error('MCP transport error:', err)
+
     await mcpServer.connect(transport)
 
     const response = await transport.handleRequest(c)
+    await mcpServer.close()
     return response ?? c.json({ error: 'No response from transport' }, 500)
   } catch (err) {
     if (err instanceof HTTPException) {
