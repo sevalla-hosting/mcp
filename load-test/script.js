@@ -80,23 +80,34 @@ const toolCallRequest = (toolName, code) =>
   })
 
 const trackStatus = (res) => {
-  if (res.status === 0) connectionErrors.add(1)
-  else if (res.status === 200) status200.add(1)
-  else if (res.status === 401) status401.add(1)
-  else if (res.status === 429) status429.add(1)
-  else if (res.status === 500) status500.add(1)
-  else if (res.status === 503) status503.add(1)
+  if (res.status === 0) {
+    connectionErrors.add(1)
+  } else if (res.status === 200) {
+    status200.add(1)
+  } else if (res.status === 401) {
+    status401.add(1)
+  } else if (res.status === 429) {
+    status429.add(1)
+  } else if (res.status === 500) {
+    status500.add(1)
+  } else if (res.status === 503) {
+    status503.add(1)
+  }
 }
 
 export default () => {
   const vuId = __VU
 
   // 1. Initialize
-  const initRes = http.post(`${BASE_URL}/mcp`, mcpRequest('initialize', {
-    protocolVersion: '2025-03-26',
-    capabilities: {},
-    clientInfo: { name: 'k6-load-test', version: '1.0.0' },
-  }), { headers, tags: { endpoint: 'initialize' } })
+  const initRes = http.post(
+    `${BASE_URL}/mcp`,
+    mcpRequest('initialize', {
+      protocolVersion: '2025-03-26',
+      capabilities: {},
+      clientInfo: { name: 'k6-load-test', version: '1.0.0' },
+    }),
+    { headers, tags: { endpoint: 'initialize' } },
+  )
 
   initDuration.add(initRes.timings.duration)
   trackStatus(initRes)

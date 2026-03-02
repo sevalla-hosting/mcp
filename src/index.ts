@@ -115,7 +115,9 @@ app.all('/mcp', async (c) => {
     const response = await transport.handleRequest(c)
     return response ?? c.json({ error: 'No response from transport' }, 500)
   } catch (err) {
-    if (err instanceof HTTPException) throw err
+    if (err instanceof HTTPException) {
+      throw err
+    }
     console.error('MCP request error:', err)
     return c.json({ error: 'Internal server error' }, 500)
   }
