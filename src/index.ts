@@ -100,7 +100,7 @@ app.post('/mcp', async (c) => {
 
   const authHeader = c.req.header('authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    const publicUrl = process.env.PUBLIC_URL || `http://localhost:${PORT}`
+    const publicUrl = process.env.PUBLIC_URL || 'https://mcp.sevalla.com'
     return c.json({ error: 'Missing or invalid Authorization header' }, 401, {
       'WWW-Authenticate': `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
     })
@@ -108,7 +108,7 @@ app.post('/mcp', async (c) => {
 
   const token = authHeader.slice(7).trim()
   if (!token) {
-    const publicUrl = process.env.PUBLIC_URL || `http://localhost:${PORT}`
+    const publicUrl = process.env.PUBLIC_URL || 'https://mcp.sevalla.com'
     return c.json({ error: 'Empty token' }, 401, {
       'WWW-Authenticate': `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
     })

@@ -46,7 +46,7 @@ export const cleanupExpired = () => {
 const cleanupTimer = setInterval(cleanupExpired, 30_000)
 cleanupTimer.unref()
 
-const getPublicUrl = () => process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || '3000'}`
+const getPublicUrl = () => process.env.PUBLIC_URL || 'https://mcp.sevalla.com'
 
 export const createOAuthRouter = () => {
   const router = new Hono()
