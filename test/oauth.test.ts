@@ -118,3 +118,32 @@ describe('well-known endpoints', () => {
     delete process.env.PUBLIC_URL
   })
 })
+
+describe('POST /oauth/register', () => {
+  const app = new Hono()
+  app.route('', createOAuthRouter())
+
+  it('returns client_id from request body when provided', async () => {
+    const res = await app.request('/oauth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_name: 'test-client', client_id: 'my-client-id' }),
+    })
+    strictEqual(res.status, 201)
+    const body = await res.json()
+    strictEqual(body.client_id, 'my-client-id')
+    strictEqual(typeof body.client_id_issued_at, 'number')
+  })
+
+  it('generates client_id when not provided', async () => {
+    const res = await app.request('/oauth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_name: 'test-client' }),
+    })
+    strictEqual(res.status, 201)
+    const body = await res.json()
+    strictEqual(typeof body.client_id, 'string')
+    strictEqual(body.client_id.length > 0, true)
+  })
+})
