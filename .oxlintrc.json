@@ -4,7 +4,7 @@
   "categories": {
     "correctness": "error"
   },
-  "ignorePatterns": ["node_modules/**/*"],
+  "ignorePatterns": ["node_modules/**/*", "docs/**/*"],
   "rules": {
     "no-unused-vars": "warn",
     "no-empty-function": "error",
