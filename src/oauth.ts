@@ -76,7 +76,7 @@ export const createOAuthRouter = () => {
   router.post('/oauth/register', async (c) => {
     const body = await c.req.json()
     const clientId = body.client_id || randomBytes(16).toString('hex')
-    return c.json({ client_id: clientId, client_id_issued_at: Math.floor(Date.now() / 1000) }, 201)
+    return c.json({ ...body, client_id: clientId, client_id_issued_at: Math.floor(Date.now() / 1000) }, 201)
   })
 
   router.get('/oauth/authorize', async (c) => {
