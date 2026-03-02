@@ -36,6 +36,8 @@ Single-file server (`src/index.ts`) with this request flow:
 
 **Stateless MCP:** `enableJsonResponse: true` and `sessionIdGenerator: undefined`. Each HTTP POST is independent — no session tracking.
 
+**Stateless OAuth:** The OAuth flow encodes all state cryptographically in URLs — no server-side storage. Pending authorization params are HMAC-signed into the callback URL; auth codes are AES-256-GCM encrypted blobs containing the Sevalla token + metadata. Requires `OAUTH_SECRET` env var (base64url-encoded 32 bytes). In production (`NODE_ENV=production`) it's mandatory; in development an ephemeral key is auto-generated.
+
 The OpenAPI spec is fetched once on startup from `api.sevalla.com/v3/openapi.json` and cached via a promise (prevents duplicate fetches on concurrent first requests).
 
 ## Code Style

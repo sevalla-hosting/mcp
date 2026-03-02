@@ -1,4 +1,4 @@
-import { randomBytes, createHash } from 'node:crypto'
+import { randomBytes, createHash, createHmac, createCipheriv, createDecipheriv, timingSafeEqual } from 'node:crypto'
 import { Hono } from 'hono'
 
 const SEVALLA_API_BASE = 'https://api.sevalla.com'
@@ -8,43 +8,70 @@ const DEVICE_CODE_TTL_MS = 300_000
 export const verifyPkce = (verifier: string, challenge: string): boolean =>
   createHash('sha256').update(verifier).digest('base64url') === challenge
 
-export const generateAuthCode = (): string => randomBytes(32).toString('base64url')
+let _secret: Buffer | undefined
 
-interface PendingAuthorization {
-  redirectUri: string
-  codeChallenge: string
-  clientId: string
-  state: string
-  expiresAt: number
-}
-
-interface StoredAuthCode {
-  token: string
-  codeChallenge: string
-  redirectUri: string
-  clientId: string
-  expiresAt: number
-}
-
-export const pendingAuthorizations = new Map<string, PendingAuthorization>()
-export const authCodes = new Map<string, StoredAuthCode>()
-
-export const cleanupExpired = () => {
-  const now = Date.now()
-  for (const [key, val] of pendingAuthorizations) {
-    if (val.expiresAt <= now) {
-      pendingAuthorizations.delete(key)
+const getSecret = (): Buffer => {
+  if (!_secret) {
+    const envSecret = process.env.OAUTH_SECRET
+    if (envSecret) {
+      _secret = Buffer.from(envSecret, 'base64url')
+    } else if (process.env.NODE_ENV === 'production') {
+      throw new Error('OAUTH_SECRET env var is required in production')
+    } else {
+      console.warn('OAUTH_SECRET not set — using ephemeral key (not suitable for production)')
+      _secret = randomBytes(32)
     }
   }
-  for (const [key, val] of authCodes) {
-    if (val.expiresAt <= now) {
-      authCodes.delete(key)
-    }
-  }
+  return _secret
 }
 
-const cleanupTimer = setInterval(cleanupExpired, 30_000)
-cleanupTimer.unref()
+const deriveKey = (purpose: string): Buffer =>
+  createHash('sha256')
+    .update(Buffer.concat([getSecret(), Buffer.from(purpose)]))
+    .digest()
+
+export const signParams = (params: Record<string, string>): string => {
+  const key = deriveKey('hmac')
+  const sorted = Object.keys(params)
+    .sort()
+    .map((k) => `${k}=${params[k]}`)
+    .join('&')
+  return createHmac('sha256', key).update(sorted).digest('base64url')
+}
+
+export const verifySignedParams = (params: Record<string, string>, sig: string): boolean => {
+  const key = deriveKey('hmac')
+  const sorted = Object.keys(params)
+    .sort()
+    .map((k) => `${k}=${params[k]}`)
+    .join('&')
+  const expected = createHmac('sha256', key).update(sorted).digest()
+  const actual = Buffer.from(sig, 'base64url')
+  if (expected.length !== actual.length) {
+    return false
+  }
+  return timingSafeEqual(expected, actual)
+}
+
+export const encrypt = (plaintext: string): string => {
+  const key = deriveKey('aes')
+  const iv = randomBytes(12)
+  const cipher = createCipheriv('aes-256-gcm', key, iv)
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
+  const authTag = cipher.getAuthTag()
+  return Buffer.concat([iv, authTag, encrypted]).toString('base64url')
+}
+
+export const decrypt = (data: string): string => {
+  const key = deriveKey('aes')
+  const buf = Buffer.from(data, 'base64url')
+  const iv = buf.subarray(0, 12)
+  const authTag = buf.subarray(12, 28)
+  const ciphertext = buf.subarray(28)
+  const decipher = createDecipheriv('aes-256-gcm', key, iv)
+  decipher.setAuthTag(authTag)
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8')
+}
 
 const getPublicUrl = () => process.env.PUBLIC_URL || 'https://mcp.sevalla.com'
 
@@ -99,29 +126,52 @@ export const createOAuthRouter = () => {
 
     const { code: deviceCode } = (await deviceCodeRes.json()) as { code: string }
 
-    pendingAuthorizations.set(deviceCode, {
-      redirectUri: q.redirect_uri,
-      codeChallenge: q.code_challenge,
-      clientId: q.client_id,
+    const params: Record<string, string> = {
+      redirect_uri: q.redirect_uri,
+      code_challenge: q.code_challenge,
+      client_id: q.client_id,
       state: q.state,
-      expiresAt: Date.now() + DEVICE_CODE_TTL_MS,
-    })
+      expires_at: (Date.now() + DEVICE_CODE_TTL_MS).toString(),
+    }
+    const sig = signParams(params)
 
     const publicUrl = getPublicUrl()
-    const callbackUrl = `${publicUrl}/oauth/callback/${deviceCode}`
+    const callbackUrl = new URL(`${publicUrl}/oauth/callback/${deviceCode}`)
+    for (const [k, v] of Object.entries(params)) {
+      callbackUrl.searchParams.set(k, v)
+    }
+    callbackUrl.searchParams.set('sig', sig)
+
     const sevallaUrl = new URL('/authorize', SEVALLA_FRONTEND_URL)
     sevallaUrl.searchParams.set('code', deviceCode)
     sevallaUrl.searchParams.set('name', 'Sevalla MCP')
-    sevallaUrl.searchParams.set('callback', callbackUrl)
+    sevallaUrl.searchParams.set('callback', callbackUrl.toString())
 
     return c.redirect(sevallaUrl.toString(), 302)
   })
 
   router.get('/oauth/callback/:deviceCode', async (c) => {
     const deviceCode = c.req.param('deviceCode')
-    const pending = pendingAuthorizations.get(deviceCode)
-    if (!pending) {
-      return c.json({ error: 'unknown_device_code' }, 404)
+    const q = c.req.query()
+
+    if (!q.sig || !q.redirect_uri || !q.code_challenge || !q.client_id || !q.state || !q.expires_at) {
+      return c.json({ error: 'invalid_request' }, 400)
+    }
+
+    const params = {
+      redirect_uri: q.redirect_uri,
+      code_challenge: q.code_challenge,
+      client_id: q.client_id,
+      state: q.state,
+      expires_at: q.expires_at,
+    }
+
+    if (!verifySignedParams(params, q.sig)) {
+      return c.json({ error: 'invalid_signature' }, 403)
+    }
+
+    if (Number(q.expires_at) <= Date.now()) {
+      return c.json({ error: 'expired' }, 400)
     }
 
     const statusRes = await fetch(`${SEVALLA_API_BASE}/v3/auth/device-codes/${deviceCode}`)
@@ -130,24 +180,22 @@ export const createOAuthRouter = () => {
     }
 
     const { status, token } = (await statusRes.json()) as { status: string; token?: string }
-    const redirectUrl = new URL(pending.redirectUri)
-    redirectUrl.searchParams.set('state', pending.state)
+    const redirectUrl = new URL(q.redirect_uri)
+    redirectUrl.searchParams.set('state', q.state)
 
     if (status === 'approved' && token) {
-      const code = generateAuthCode()
-      authCodes.set(code, {
+      const payload = JSON.stringify({
         token,
-        codeChallenge: pending.codeChallenge,
-        redirectUri: pending.redirectUri,
-        clientId: pending.clientId,
-        expiresAt: Date.now() + 60_000,
+        code_challenge: q.code_challenge,
+        redirect_uri: q.redirect_uri,
+        client_id: q.client_id,
+        expires_at: Date.now() + 60_000,
       })
-      pendingAuthorizations.delete(deviceCode)
+      const code = encrypt(payload)
       redirectUrl.searchParams.set('code', code)
       return c.redirect(redirectUrl.toString(), 302)
     }
 
-    pendingAuthorizations.delete(deviceCode)
     redirectUrl.searchParams.set('error', 'access_denied')
     return c.redirect(redirectUrl.toString(), 302)
   })
@@ -164,22 +212,22 @@ export const createOAuthRouter = () => {
       return c.json({ error: 'invalid_request' }, 400)
     }
 
-    const stored = authCodes.get(code)
-    if (!stored) {
+    let stored: { token: string; code_challenge: string; redirect_uri: string; client_id: string; expires_at: number }
+    try {
+      stored = JSON.parse(decrypt(code))
+    } catch {
       return c.json({ error: 'invalid_grant' }, 400)
     }
 
-    authCodes.delete(code)
-
-    if (stored.expiresAt <= Date.now()) {
+    if (stored.expires_at <= Date.now()) {
       return c.json({ error: 'invalid_grant' }, 400)
     }
 
-    if (stored.redirectUri !== redirectUri || stored.clientId !== clientId) {
+    if (stored.redirect_uri !== redirectUri || stored.client_id !== clientId) {
       return c.json({ error: 'invalid_grant' }, 400)
     }
 
-    if (!verifyPkce(codeVerifier, stored.codeChallenge)) {
+    if (!verifyPkce(codeVerifier, stored.code_challenge)) {
       return c.json({ error: 'invalid_grant' }, 400)
     }
 

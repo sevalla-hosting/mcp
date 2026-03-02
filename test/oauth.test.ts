@@ -1,15 +1,8 @@
 import { describe, it, mock } from 'node:test'
-import { strictEqual } from 'node:assert'
+import { strictEqual, ok, notStrictEqual, throws } from 'node:assert'
 import { createHash } from 'node:crypto'
 import { Hono } from 'hono'
-import {
-  verifyPkce,
-  generateAuthCode,
-  pendingAuthorizations,
-  authCodes,
-  cleanupExpired,
-  createOAuthRouter,
-} from '../src/oauth.ts'
+import { verifyPkce, signParams, verifySignedParams, encrypt, decrypt, createOAuthRouter } from '../src/oauth.ts'
 
 describe('verifyPkce', () => {
   it('returns true for a valid verifier-challenge pair', () => {
@@ -29,65 +22,46 @@ describe('verifyPkce', () => {
   })
 })
 
-describe('generateAuthCode', () => {
-  it('returns a non-empty string', () => {
-    const code = generateAuthCode()
-    strictEqual(typeof code, 'string')
-    strictEqual(code.length > 0, true)
+describe('signParams / verifySignedParams', () => {
+  it('verifies a valid signature', () => {
+    const params = { foo: 'bar', baz: 'qux' }
+    const sig = signParams(params)
+    strictEqual(verifySignedParams(params, sig), true)
   })
 
-  it('returns unique values', () => {
-    const a = generateAuthCode()
-    const b = generateAuthCode()
-    strictEqual(a !== b, true)
+  it('rejects a tampered param', () => {
+    const params = { foo: 'bar', baz: 'qux' }
+    const sig = signParams(params)
+    strictEqual(verifySignedParams({ ...params, foo: 'tampered' }, sig), false)
+  })
+
+  it('rejects a tampered signature', () => {
+    const params = { foo: 'bar' }
+    strictEqual(verifySignedParams(params, 'invalid-sig'), false)
+  })
+
+  it('is order-independent', () => {
+    const sig1 = signParams({ a: '1', b: '2' })
+    const sig2 = signParams({ b: '2', a: '1' })
+    strictEqual(sig1, sig2)
   })
 })
 
-describe('auth store', () => {
-  it('stores and retrieves a pending authorization', () => {
-    pendingAuthorizations.set('TEST1', {
-      redirectUri: 'http://localhost:8080/callback',
-      codeChallenge: 'challenge123',
-      clientId: 'client1',
-      state: 'state1',
-      expiresAt: Date.now() + 300_000,
-    })
-    const entry = pendingAuthorizations.get('TEST1')
-    strictEqual(entry?.clientId, 'client1')
-    pendingAuthorizations.delete('TEST1')
+describe('encrypt / decrypt', () => {
+  it('round-trips plaintext', () => {
+    const plaintext = JSON.stringify({ token: 'svl_test', expires_at: Date.now() })
+    strictEqual(decrypt(encrypt(plaintext)), plaintext)
   })
 
-  it('stores and retrieves an auth code', () => {
-    authCodes.set('code1', {
-      token: 'svl_test123',
-      codeChallenge: 'challenge123',
-      redirectUri: 'http://localhost:8080/callback',
-      clientId: 'client1',
-      expiresAt: Date.now() + 60_000,
-    })
-    const entry = authCodes.get('code1')
-    strictEqual(entry?.token, 'svl_test123')
-    authCodes.delete('code1')
+  it('produces unique ciphertexts for same plaintext', () => {
+    const plaintext = 'hello'
+    notStrictEqual(encrypt(plaintext), encrypt(plaintext))
   })
 
-  it('cleanupExpired removes expired entries', () => {
-    pendingAuthorizations.set('EXPIRED', {
-      redirectUri: 'http://localhost:8080/callback',
-      codeChallenge: 'c',
-      clientId: 'c',
-      state: '',
-      expiresAt: Date.now() - 1000,
-    })
-    authCodes.set('expired-code', {
-      token: 'svl_old',
-      codeChallenge: 'c',
-      redirectUri: 'http://localhost:8080/callback',
-      clientId: 'c',
-      expiresAt: Date.now() - 1000,
-    })
-    cleanupExpired()
-    strictEqual(pendingAuthorizations.has('EXPIRED'), false)
-    strictEqual(authCodes.has('expired-code'), false)
+  it('rejects tampered ciphertext', () => {
+    const encrypted = encrypt('secret')
+    const tampered = encrypted.slice(0, -2) + 'XX'
+    throws(() => decrypt(tampered))
   })
 })
 
@@ -152,7 +126,7 @@ describe('GET /oauth/authorize', () => {
   const app = new Hono()
   app.route('', createOAuthRouter())
 
-  it('redirects to Sevalla authorize with device code', async () => {
+  it('redirects to Sevalla authorize with signed callback params', async () => {
     process.env.PUBLIC_URL = 'https://mcp.sevalla.com'
     const originalFetch = globalThis.fetch
     globalThis.fetch = mock.fn(
@@ -175,16 +149,25 @@ describe('GET /oauth/authorize', () => {
       strictEqual(url.pathname, '/authorize')
       strictEqual(url.searchParams.get('code'), 'TESTCODE')
       strictEqual(url.searchParams.get('name'), 'Sevalla MCP')
-      strictEqual(url.searchParams.get('callback'), 'https://mcp.sevalla.com/oauth/callback/TESTCODE')
 
-      strictEqual(pendingAuthorizations.has('TESTCODE'), true)
-      const pending = pendingAuthorizations.get('TESTCODE')
-      strictEqual(pending?.redirectUri, 'http://localhost:8080/callback')
-      strictEqual(pending?.codeChallenge, 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM')
-      strictEqual(pending?.clientId, 'test-client')
-      strictEqual(pending?.state, 'xyz')
+      const callbackUrl = new URL(url.searchParams.get('callback') ?? '')
+      strictEqual(callbackUrl.pathname, '/oauth/callback/TESTCODE')
+      strictEqual(callbackUrl.searchParams.get('redirect_uri'), 'http://localhost:8080/callback')
+      strictEqual(callbackUrl.searchParams.get('code_challenge'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM')
+      strictEqual(callbackUrl.searchParams.get('client_id'), 'test-client')
+      strictEqual(callbackUrl.searchParams.get('state'), 'xyz')
+      ok(callbackUrl.searchParams.get('expires_at'))
+      ok(callbackUrl.searchParams.get('sig'))
+
+      const params = {
+        redirect_uri: callbackUrl.searchParams.get('redirect_uri') ?? '',
+        code_challenge: callbackUrl.searchParams.get('code_challenge') ?? '',
+        client_id: callbackUrl.searchParams.get('client_id') ?? '',
+        state: callbackUrl.searchParams.get('state') ?? '',
+        expires_at: callbackUrl.searchParams.get('expires_at') ?? '',
+      }
+      strictEqual(verifySignedParams(params, callbackUrl.searchParams.get('sig') ?? ''), true)
     } finally {
-      pendingAuthorizations.delete('TESTCODE')
       globalThis.fetch = originalFetch
       delete process.env.PUBLIC_URL
     }
@@ -207,14 +190,16 @@ describe('GET /oauth/callback/:deviceCode', () => {
   const app = new Hono()
   app.route('', createOAuthRouter())
 
-  it('generates auth code and redirects on approved device code', async () => {
-    pendingAuthorizations.set('APPROVED1', {
-      redirectUri: 'http://localhost:8080/callback',
-      codeChallenge: 'test-challenge',
-      clientId: 'test-client',
+  it('encrypts auth code and redirects on approved device code', async () => {
+    const params = {
+      redirect_uri: 'http://localhost:8080/callback',
+      code_challenge: 'test-challenge',
+      client_id: 'test-client',
       state: 'test-state',
-      expiresAt: Date.now() + 300_000,
-    })
+      expires_at: (Date.now() + 300_000).toString(),
+    }
+    const sig = signParams(params)
+    const qs = new URLSearchParams({ ...params, sig }).toString()
 
     const originalFetch = globalThis.fetch
     globalThis.fetch = mock.fn(
@@ -226,37 +211,34 @@ describe('GET /oauth/callback/:deviceCode', () => {
     ) as typeof fetch
 
     try {
-      const res = await app.request('/oauth/callback/APPROVED1', { redirect: 'manual' })
+      const res = await app.request(`/oauth/callback/APPROVED1?${qs}`, { redirect: 'manual' })
       strictEqual(res.status, 302)
       const location = new URL(res.headers.get('location') ?? '')
       strictEqual(location.origin, 'http://localhost:8080')
       strictEqual(location.pathname, '/callback')
       strictEqual(location.searchParams.get('state'), 'test-state')
       const authCode = location.searchParams.get('code') ?? ''
-      strictEqual(authCode.length > 0, true)
-      strictEqual(authCodes.has(authCode), true)
-      const stored = authCodes.get(authCode)
-      strictEqual(stored?.token, 'svl_testtoken123')
-      strictEqual(stored?.clientId, 'test-client')
-      strictEqual(stored?.codeChallenge, 'test-challenge')
-      strictEqual(stored?.redirectUri, 'http://localhost:8080/callback')
+      ok(authCode.length > 0)
+      const stored = JSON.parse(decrypt(authCode))
+      strictEqual(stored.token, 'svl_testtoken123')
+      strictEqual(stored.client_id, 'test-client')
+      strictEqual(stored.code_challenge, 'test-challenge')
+      strictEqual(stored.redirect_uri, 'http://localhost:8080/callback')
     } finally {
       globalThis.fetch = originalFetch
-      pendingAuthorizations.delete('APPROVED1')
-      for (const [k] of authCodes) {
-        authCodes.delete(k)
-      }
     }
   })
 
   it('redirects with error when device code is denied', async () => {
-    pendingAuthorizations.set('DENIED1', {
-      redirectUri: 'http://localhost:8080/callback',
-      codeChallenge: 'c',
-      clientId: 'c',
+    const params = {
+      redirect_uri: 'http://localhost:8080/callback',
+      code_challenge: 'c',
+      client_id: 'c',
       state: 'denied-state',
-      expiresAt: Date.now() + 300_000,
-    })
+      expires_at: (Date.now() + 300_000).toString(),
+    }
+    const sig = signParams(params)
+    const qs = new URLSearchParams({ ...params, sig }).toString()
 
     const originalFetch = globalThis.fetch
     globalThis.fetch = mock.fn(
@@ -268,20 +250,33 @@ describe('GET /oauth/callback/:deviceCode', () => {
     ) as typeof fetch
 
     try {
-      const res = await app.request('/oauth/callback/DENIED1', { redirect: 'manual' })
+      const res = await app.request(`/oauth/callback/DENIED1?${qs}`, { redirect: 'manual' })
       strictEqual(res.status, 302)
       const location = new URL(res.headers.get('location') ?? '')
       strictEqual(location.searchParams.get('error'), 'access_denied')
       strictEqual(location.searchParams.get('state'), 'denied-state')
     } finally {
       globalThis.fetch = originalFetch
-      pendingAuthorizations.delete('DENIED1')
     }
   })
 
-  it('returns 404 for unknown device code', async () => {
+  it('returns 400 for missing signed params', async () => {
     const res = await app.request('/oauth/callback/NONEXISTENT')
-    strictEqual(res.status, 404)
+    strictEqual(res.status, 400)
+  })
+
+  it('returns 403 for invalid signature', async () => {
+    const qs = new URLSearchParams({
+      redirect_uri: 'http://localhost:8080/callback',
+      code_challenge: 'c',
+      client_id: 'c',
+      state: 's',
+      expires_at: (Date.now() + 300_000).toString(),
+      sig: 'invalid-signature',
+    }).toString()
+
+    const res = await app.request(`/oauth/callback/TAMPERED?${qs}`)
+    strictEqual(res.status, 403)
   })
 })
 
@@ -289,24 +284,26 @@ describe('POST /oauth/token', () => {
   const app = new Hono()
   app.route('', createOAuthRouter())
 
-  it('exchanges auth code for access token with valid PKCE', async () => {
+  it('exchanges encrypted auth code for access token with valid PKCE', async () => {
     const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'
     const challenge = createHash('sha256').update(verifier).digest('base64url')
 
-    authCodes.set('test-auth-code', {
-      token: 'svl_realtoken',
-      codeChallenge: challenge,
-      redirectUri: 'http://localhost:8080/callback',
-      clientId: 'test-client',
-      expiresAt: Date.now() + 60_000,
-    })
+    const code = encrypt(
+      JSON.stringify({
+        token: 'svl_realtoken',
+        code_challenge: challenge,
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: 'test-client',
+        expires_at: Date.now() + 60_000,
+      }),
+    )
 
     const res = await app.request('/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        code: 'test-auth-code',
+        code,
         redirect_uri: 'http://localhost:8080/callback',
         client_id: 'test-client',
         code_verifier: verifier,
@@ -317,26 +314,27 @@ describe('POST /oauth/token', () => {
     const body = await res.json()
     strictEqual(body.access_token, 'svl_realtoken')
     strictEqual(body.token_type, 'bearer')
-    strictEqual(authCodes.has('test-auth-code'), false)
   })
 
   it('rejects invalid PKCE verifier', async () => {
     const challenge = createHash('sha256').update('correct-verifier').digest('base64url')
 
-    authCodes.set('pkce-fail-code', {
-      token: 'svl_token',
-      codeChallenge: challenge,
-      redirectUri: 'http://localhost:8080/callback',
-      clientId: 'test-client',
-      expiresAt: Date.now() + 60_000,
-    })
+    const code = encrypt(
+      JSON.stringify({
+        token: 'svl_token',
+        code_challenge: challenge,
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: 'test-client',
+        expires_at: Date.now() + 60_000,
+      }),
+    )
 
     const res = await app.request('/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        code: 'pkce-fail-code',
+        code,
         redirect_uri: 'http://localhost:8080/callback',
         client_id: 'test-client',
         code_verifier: 'wrong-verifier',
@@ -346,27 +344,28 @@ describe('POST /oauth/token', () => {
     strictEqual(res.status, 400)
     const body = await res.json()
     strictEqual(body.error, 'invalid_grant')
-    authCodes.delete('pkce-fail-code')
   })
 
   it('rejects mismatched redirect_uri', async () => {
     const verifier = 'test-verifier'
     const challenge = createHash('sha256').update(verifier).digest('base64url')
 
-    authCodes.set('redirect-fail-code', {
-      token: 'svl_token',
-      codeChallenge: challenge,
-      redirectUri: 'http://localhost:8080/callback',
-      clientId: 'test-client',
-      expiresAt: Date.now() + 60_000,
-    })
+    const code = encrypt(
+      JSON.stringify({
+        token: 'svl_token',
+        code_challenge: challenge,
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: 'test-client',
+        expires_at: Date.now() + 60_000,
+      }),
+    )
 
     const res = await app.request('/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        code: 'redirect-fail-code',
+        code,
         redirect_uri: 'http://evil.com/callback',
         client_id: 'test-client',
         code_verifier: verifier,
@@ -374,27 +373,28 @@ describe('POST /oauth/token', () => {
     })
 
     strictEqual(res.status, 400)
-    authCodes.delete('redirect-fail-code')
   })
 
   it('rejects expired auth code', async () => {
     const verifier = 'test-verifier-for-expiry'
     const challenge = createHash('sha256').update(verifier).digest('base64url')
 
-    authCodes.set('expired-auth-code', {
-      token: 'svl_token',
-      codeChallenge: challenge,
-      redirectUri: 'http://localhost:8080/callback',
-      clientId: 'test-client',
-      expiresAt: Date.now() - 1000,
-    })
+    const code = encrypt(
+      JSON.stringify({
+        token: 'svl_token',
+        code_challenge: challenge,
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: 'test-client',
+        expires_at: Date.now() - 1000,
+      }),
+    )
 
     const res = await app.request('/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        code: 'expired-auth-code',
+        code,
         redirect_uri: 'http://localhost:8080/callback',
         client_id: 'test-client',
         code_verifier: verifier,
@@ -410,20 +410,22 @@ describe('POST /oauth/token', () => {
     const verifier = 'test-verifier-for-client'
     const challenge = createHash('sha256').update(verifier).digest('base64url')
 
-    authCodes.set('client-mismatch-code', {
-      token: 'svl_token',
-      codeChallenge: challenge,
-      redirectUri: 'http://localhost:8080/callback',
-      clientId: 'client-a',
-      expiresAt: Date.now() + 60_000,
-    })
+    const code = encrypt(
+      JSON.stringify({
+        token: 'svl_token',
+        code_challenge: challenge,
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: 'client-a',
+        expires_at: Date.now() + 60_000,
+      }),
+    )
 
     const res = await app.request('/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        code: 'client-mismatch-code',
+        code,
         redirect_uri: 'http://localhost:8080/callback',
         client_id: 'client-b',
         code_verifier: verifier,
@@ -431,16 +433,15 @@ describe('POST /oauth/token', () => {
     })
 
     strictEqual(res.status, 400)
-    authCodes.delete('client-mismatch-code')
   })
 
-  it('rejects unknown auth code', async () => {
+  it('rejects invalid encrypted auth code', async () => {
     const res = await app.request('/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        code: 'nonexistent',
+        code: 'not-a-valid-encrypted-code',
         redirect_uri: 'http://localhost:8080/callback',
         client_id: 'test-client',
         code_verifier: 'whatever',
