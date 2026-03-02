@@ -88,6 +88,7 @@ describe('well-known endpoints', () => {
     strictEqual(body.authorization_endpoint, 'https://mcp.test.com/oauth/authorize')
     strictEqual(body.token_endpoint, 'https://mcp.test.com/oauth/token')
     strictEqual(body.registration_endpoint, 'https://mcp.test.com/oauth/register')
+    strictEqual(body.token_endpoint_auth_methods_supported[0], 'none')
     strictEqual(body.code_challenge_methods_supported[0], 'S256')
     delete process.env.PUBLIC_URL
   })
