@@ -282,3 +282,114 @@ describe('GET /oauth/callback/:deviceCode', () => {
     strictEqual(res.status, 404)
   })
 })
+
+describe('POST /oauth/token', () => {
+  const app = new Hono()
+  app.route('', createOAuthRouter())
+
+  it('exchanges auth code for access token with valid PKCE', async () => {
+    const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'
+    const challenge = createHash('sha256').update(verifier).digest('base64url')
+
+    authCodes.set('test-auth-code', {
+      token: 'svl_realtoken',
+      codeChallenge: challenge,
+      redirectUri: 'http://localhost:8080/callback',
+      clientId: 'test-client',
+      expiresAt: Date.now() + 60_000,
+    })
+
+    const res = await app.request('/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: 'test-auth-code',
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: 'test-client',
+        code_verifier: verifier,
+      }).toString(),
+    })
+
+    strictEqual(res.status, 200)
+    const body = await res.json()
+    strictEqual(body.access_token, 'svl_realtoken')
+    strictEqual(body.token_type, 'bearer')
+    strictEqual(authCodes.has('test-auth-code'), false)
+  })
+
+  it('rejects invalid PKCE verifier', async () => {
+    const challenge = createHash('sha256').update('correct-verifier').digest('base64url')
+
+    authCodes.set('pkce-fail-code', {
+      token: 'svl_token',
+      codeChallenge: challenge,
+      redirectUri: 'http://localhost:8080/callback',
+      clientId: 'test-client',
+      expiresAt: Date.now() + 60_000,
+    })
+
+    const res = await app.request('/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: 'pkce-fail-code',
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: 'test-client',
+        code_verifier: 'wrong-verifier',
+      }).toString(),
+    })
+
+    strictEqual(res.status, 400)
+    const body = await res.json()
+    strictEqual(body.error, 'invalid_grant')
+    authCodes.delete('pkce-fail-code')
+  })
+
+  it('rejects mismatched redirect_uri', async () => {
+    const verifier = 'test-verifier'
+    const challenge = createHash('sha256').update(verifier).digest('base64url')
+
+    authCodes.set('redirect-fail-code', {
+      token: 'svl_token',
+      codeChallenge: challenge,
+      redirectUri: 'http://localhost:8080/callback',
+      clientId: 'test-client',
+      expiresAt: Date.now() + 60_000,
+    })
+
+    const res = await app.request('/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: 'redirect-fail-code',
+        redirect_uri: 'http://evil.com/callback',
+        client_id: 'test-client',
+        code_verifier: verifier,
+      }).toString(),
+    })
+
+    strictEqual(res.status, 400)
+    authCodes.delete('redirect-fail-code')
+  })
+
+  it('rejects unknown auth code', async () => {
+    const res = await app.request('/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: 'nonexistent',
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: 'test-client',
+        code_verifier: 'whatever',
+      }).toString(),
+    })
+
+    strictEqual(res.status, 400)
+    const body = await res.json()
+    strictEqual(body.error, 'invalid_grant')
+  })
+})

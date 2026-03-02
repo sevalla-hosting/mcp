@@ -148,5 +148,35 @@ export const createOAuthRouter = () => {
     return c.redirect(redirectUrl.toString(), 302)
   })
 
+  router.post('/oauth/token', async (c) => {
+    const body = await c.req.parseBody()
+    const grantType = body.grant_type as string
+    const code = body.code as string
+    const redirectUri = body.redirect_uri as string
+    const clientId = body.client_id as string
+    const codeVerifier = body.code_verifier as string
+
+    if (grantType !== 'authorization_code' || !code || !redirectUri || !clientId || !codeVerifier) {
+      return c.json({ error: 'invalid_request' }, 400)
+    }
+
+    const stored = authCodes.get(code)
+    if (!stored) {
+      return c.json({ error: 'invalid_grant' }, 400)
+    }
+
+    authCodes.delete(code)
+
+    if (stored.redirectUri !== redirectUri || stored.clientId !== clientId) {
+      return c.json({ error: 'invalid_grant' }, 400)
+    }
+
+    if (!verifyPkce(codeVerifier, stored.codeChallenge)) {
+      return c.json({ error: 'invalid_grant' }, 400)
+    }
+
+    return c.json({ access_token: stored.token, token_type: 'bearer' })
+  })
+
   return router
 }
