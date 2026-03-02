@@ -3,6 +3,7 @@ import { StreamableHTTPTransport } from '@hono/mcp'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createTools } from './sandbox/index.ts'
 import { Hono } from 'hono'
+import { HTTPException } from 'hono/http-exception'
 import { cors } from 'hono/cors'
 
 const PORT = parseInt(process.env.PORT || '3000', 10)
@@ -114,6 +115,7 @@ app.all('/mcp', async (c) => {
     const response = await transport.handleRequest(c)
     return response ?? c.json({ error: 'No response from transport' }, 500)
   } catch (err) {
+    if (err instanceof HTTPException) throw err
     console.error('MCP request error:', err)
     return c.json({ error: 'Internal server error' }, 500)
   }
