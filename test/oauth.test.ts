@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test'
+import { describe, it, mock } from 'node:test'
 import { strictEqual } from 'node:assert'
 import { createHash } from 'node:crypto'
 import { Hono } from 'hono'
@@ -145,5 +145,60 @@ describe('POST /oauth/register', () => {
     const body = await res.json()
     strictEqual(typeof body.client_id, 'string')
     strictEqual(body.client_id.length > 0, true)
+  })
+})
+
+describe('GET /oauth/authorize', () => {
+  const app = new Hono()
+  app.route('', createOAuthRouter())
+
+  it('redirects to Sevalla authorize with device code', async () => {
+    process.env.PUBLIC_URL = 'https://mcp.sevalla.com'
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = mock.fn(
+      async () =>
+        new Response(JSON.stringify({ code: 'TESTCODE', expires_at: new Date(Date.now() + 300_000).toISOString() }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    ) as typeof fetch
+
+    try {
+      const res = await app.request(
+        '/oauth/authorize?response_type=code&client_id=test-client&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcallback&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256&state=xyz',
+        { redirect: 'manual' },
+      )
+      strictEqual(res.status, 302)
+      const location = res.headers.get('location') ?? ''
+      const url = new URL(location)
+      strictEqual(url.origin, 'https://app.sevalla.com')
+      strictEqual(url.pathname, '/authorize')
+      strictEqual(url.searchParams.get('code'), 'TESTCODE')
+      strictEqual(url.searchParams.get('name'), 'Sevalla MCP')
+      strictEqual(url.searchParams.get('callback'), 'https://mcp.sevalla.com/oauth/callback/TESTCODE')
+
+      strictEqual(pendingAuthorizations.has('TESTCODE'), true)
+      const pending = pendingAuthorizations.get('TESTCODE')!
+      strictEqual(pending.redirectUri, 'http://localhost:8080/callback')
+      strictEqual(pending.codeChallenge, 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM')
+      strictEqual(pending.clientId, 'test-client')
+      strictEqual(pending.state, 'xyz')
+    } finally {
+      pendingAuthorizations.delete('TESTCODE')
+      globalThis.fetch = originalFetch
+      delete process.env.PUBLIC_URL
+    }
+  })
+
+  it('returns 400 when required params are missing', async () => {
+    const res = await app.request('/oauth/authorize?response_type=code')
+    strictEqual(res.status, 400)
+  })
+
+  it('returns 400 when code_challenge_method is not S256', async () => {
+    const res = await app.request(
+      '/oauth/authorize?response_type=code&client_id=c&redirect_uri=http%3A%2F%2Flocalhost&code_challenge=abc&code_challenge_method=plain&state=s',
+    )
+    strictEqual(res.status, 400)
   })
 })
