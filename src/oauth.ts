@@ -32,10 +32,14 @@ export const authCodes = new Map<string, StoredAuthCode>()
 export const cleanupExpired = () => {
   const now = Date.now()
   for (const [key, val] of pendingAuthorizations) {
-    if (val.expiresAt <= now) pendingAuthorizations.delete(key)
+    if (val.expiresAt <= now) {
+      pendingAuthorizations.delete(key)
+    }
   }
   for (const [key, val] of authCodes) {
-    if (val.expiresAt <= now) authCodes.delete(key)
+    if (val.expiresAt <= now) {
+      authCodes.delete(key)
+    }
   }
 }
 

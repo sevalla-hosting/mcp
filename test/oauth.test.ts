@@ -178,11 +178,11 @@ describe('GET /oauth/authorize', () => {
       strictEqual(url.searchParams.get('callback'), 'https://mcp.sevalla.com/oauth/callback/TESTCODE')
 
       strictEqual(pendingAuthorizations.has('TESTCODE'), true)
-      const pending = pendingAuthorizations.get('TESTCODE')!
-      strictEqual(pending.redirectUri, 'http://localhost:8080/callback')
-      strictEqual(pending.codeChallenge, 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM')
-      strictEqual(pending.clientId, 'test-client')
-      strictEqual(pending.state, 'xyz')
+      const pending = pendingAuthorizations.get('TESTCODE')
+      strictEqual(pending?.redirectUri, 'http://localhost:8080/callback')
+      strictEqual(pending?.codeChallenge, 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM')
+      strictEqual(pending?.clientId, 'test-client')
+      strictEqual(pending?.state, 'xyz')
     } finally {
       pendingAuthorizations.delete('TESTCODE')
       globalThis.fetch = originalFetch
@@ -235,15 +235,17 @@ describe('GET /oauth/callback/:deviceCode', () => {
       const authCode = location.searchParams.get('code') ?? ''
       strictEqual(authCode.length > 0, true)
       strictEqual(authCodes.has(authCode), true)
-      const stored = authCodes.get(authCode)!
-      strictEqual(stored.token, 'svl_testtoken123')
-      strictEqual(stored.clientId, 'test-client')
-      strictEqual(stored.codeChallenge, 'test-challenge')
-      strictEqual(stored.redirectUri, 'http://localhost:8080/callback')
+      const stored = authCodes.get(authCode)
+      strictEqual(stored?.token, 'svl_testtoken123')
+      strictEqual(stored?.clientId, 'test-client')
+      strictEqual(stored?.codeChallenge, 'test-challenge')
+      strictEqual(stored?.redirectUri, 'http://localhost:8080/callback')
     } finally {
       globalThis.fetch = originalFetch
       pendingAuthorizations.delete('APPROVED1')
-      for (const [k] of authCodes) authCodes.delete(k)
+      for (const [k] of authCodes) {
+        authCodes.delete(k)
+      }
     }
   })
 
