@@ -113,5 +113,40 @@ export const createOAuthRouter = () => {
     return c.redirect(sevallaUrl.toString(), 302)
   })
 
+  router.get('/oauth/callback/:deviceCode', async (c) => {
+    const deviceCode = c.req.param('deviceCode')
+    const pending = pendingAuthorizations.get(deviceCode)
+    if (!pending) {
+      return c.json({ error: 'unknown_device_code' }, 404)
+    }
+
+    const statusRes = await fetch(`${SEVALLA_API_BASE}/v3/auth/device-codes/${deviceCode}`)
+    if (!statusRes.ok) {
+      return c.json({ error: 'device_code_poll_failed' }, 502)
+    }
+
+    const { status, token } = (await statusRes.json()) as { status: string; token?: string }
+    const redirectUrl = new URL(pending.redirectUri)
+    redirectUrl.searchParams.set('state', pending.state)
+
+    if (status === 'approved' && token) {
+      const code = generateAuthCode()
+      authCodes.set(code, {
+        token,
+        codeChallenge: pending.codeChallenge,
+        redirectUri: pending.redirectUri,
+        clientId: pending.clientId,
+        expiresAt: Date.now() + 60_000,
+      })
+      pendingAuthorizations.delete(deviceCode)
+      redirectUrl.searchParams.set('code', code)
+      return c.redirect(redirectUrl.toString(), 302)
+    }
+
+    pendingAuthorizations.delete(deviceCode)
+    redirectUrl.searchParams.set('error', 'access_denied')
+    return c.redirect(redirectUrl.toString(), 302)
+  })
+
   return router
 }

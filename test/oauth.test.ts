@@ -202,3 +202,83 @@ describe('GET /oauth/authorize', () => {
     strictEqual(res.status, 400)
   })
 })
+
+describe('GET /oauth/callback/:deviceCode', () => {
+  const app = new Hono()
+  app.route('', createOAuthRouter())
+
+  it('generates auth code and redirects on approved device code', async () => {
+    pendingAuthorizations.set('APPROVED1', {
+      redirectUri: 'http://localhost:8080/callback',
+      codeChallenge: 'test-challenge',
+      clientId: 'test-client',
+      state: 'test-state',
+      expiresAt: Date.now() + 300_000,
+    })
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = mock.fn(
+      async () =>
+        new Response(JSON.stringify({ status: 'approved', token: 'svl_testtoken123' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    ) as typeof fetch
+
+    try {
+      const res = await app.request('/oauth/callback/APPROVED1', { redirect: 'manual' })
+      strictEqual(res.status, 302)
+      const location = new URL(res.headers.get('location') ?? '')
+      strictEqual(location.origin, 'http://localhost:8080')
+      strictEqual(location.pathname, '/callback')
+      strictEqual(location.searchParams.get('state'), 'test-state')
+      const authCode = location.searchParams.get('code') ?? ''
+      strictEqual(authCode.length > 0, true)
+      strictEqual(authCodes.has(authCode), true)
+      const stored = authCodes.get(authCode)!
+      strictEqual(stored.token, 'svl_testtoken123')
+      strictEqual(stored.clientId, 'test-client')
+      strictEqual(stored.codeChallenge, 'test-challenge')
+      strictEqual(stored.redirectUri, 'http://localhost:8080/callback')
+    } finally {
+      globalThis.fetch = originalFetch
+      pendingAuthorizations.delete('APPROVED1')
+      for (const [k] of authCodes) authCodes.delete(k)
+    }
+  })
+
+  it('redirects with error when device code is denied', async () => {
+    pendingAuthorizations.set('DENIED1', {
+      redirectUri: 'http://localhost:8080/callback',
+      codeChallenge: 'c',
+      clientId: 'c',
+      state: 'denied-state',
+      expiresAt: Date.now() + 300_000,
+    })
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = mock.fn(
+      async () =>
+        new Response(JSON.stringify({ status: 'denied' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    ) as typeof fetch
+
+    try {
+      const res = await app.request('/oauth/callback/DENIED1', { redirect: 'manual' })
+      strictEqual(res.status, 302)
+      const location = new URL(res.headers.get('location') ?? '')
+      strictEqual(location.searchParams.get('error'), 'access_denied')
+      strictEqual(location.searchParams.get('state'), 'denied-state')
+    } finally {
+      globalThis.fetch = originalFetch
+      pendingAuthorizations.delete('DENIED1')
+    }
+  })
+
+  it('returns 404 for unknown device code', async () => {
+    const res = await app.request('/oauth/callback/NONEXISTENT')
+    strictEqual(res.status, 404)
+  })
+})
