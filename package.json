@@ -10,25 +10,40 @@
     "check:code": "tsc --noEmit --skipLibCheck && oxlint && oxfmt --check",
     "lint": "oxlint",
     "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check"
+    "fmt:check": "oxfmt --check",
+    "build:app": "cross-env INPUT=src/apps/process-analytics/index.html vite build",
+    "dev:app": "cross-env INPUT=src/apps/process-analytics/index.html vite"
   },
   "dependencies": {
     "@hono/mcp": "^0.2.4",
     "@hono/node-server": "^1.19.9",
+    "@modelcontextprotocol/ext-apps": "^1.1.2",
     "@modelcontextprotocol/sdk": "^1.27.1",
+    "date-fns": "^4.1.0",
     "hono": "^4.12.3",
     "isolated-vm": "^6.0.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "recharts": "^3.7.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^25.3.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "cross-env": "^10.1.0",
     "eslint-plugin-unused-imports": "^4.4.1",
     "oxfmt": "^0.35.0",
     "oxlint": "^1.50.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vite-plugin-singlefile": "^2.3.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@modelcontextprotocol/ext-apps",
+      "esbuild",
       "isolated-vm"
     ]
   }
