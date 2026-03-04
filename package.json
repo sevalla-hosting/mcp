@@ -11,7 +11,7 @@
     "lint": "oxlint",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "build:app": "cross-env INPUT=src/apps/process-analytics/index.html vite build",
+    "build:app": "cross-env INPUT=src/apps/process-analytics/index.html vite build && cross-env INPUT=src/apps/app-analytics/index.html vite build && cross-env INPUT=src/apps/database-analytics/index.html vite build && cross-env INPUT=src/apps/static-site-analytics/index.html vite build",
     "dev:app": "cross-env INPUT=src/apps/process-analytics/index.html vite"
   },
   "dependencies": {
