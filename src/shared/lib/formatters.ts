@@ -10,6 +10,13 @@ export const formatBytes = (bytes: number): string => {
   return `${val.toFixed(val < 10 ? 1 : 0)} ${units[i]}`
 }
 
+export const formatCount = (val: number): string => {
+  if (val >= 1000) {
+    return `${(val / 1000).toFixed(1)}k`
+  }
+  return String(Math.round(val))
+}
+
 export const formatDateTime = (timestamp: number, hoursAgo: number): string => {
   const date = new Date(timestamp)
   if (hoursAgo <= 24) {
