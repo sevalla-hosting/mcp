@@ -1,0 +1,35 @@
+{
+  "name": "sevalla-mcp",
+  "packageManager": "pnpm@10.30.3",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "start": "node src/index.ts",
+    "test": "node --test test/**/*.test.ts",
+    "check:code": "tsc --noEmit --skipLibCheck && oxlint && oxfmt --check",
+    "lint": "oxlint",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check"
+  },
+  "dependencies": {
+    "@hono/mcp": "^0.2.4",
+    "@hono/node-server": "^1.19.9",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "hono": "^4.12.3",
+    "isolated-vm": "^6.0.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.2",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "oxfmt": "^0.35.0",
+    "oxlint": "^1.50.0",
+    "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "isolated-vm"
+    ]
+  }
+}

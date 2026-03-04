@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["unicorn", "typescript"],
+  "categories": {
+    "correctness": "error"
+  },
+  "ignorePatterns": ["node_modules/**/*", "docs/**/*"],
+  "rules": {
+    "no-unused-vars": "warn",
+    "no-empty-function": "error",
+    "no-unused-expressions": "error",
+    "no-array-constructor": "error",
+    "curly": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-rest-params": "error",
+    "prefer-spread": "error",
+    "@typescript-eslint/ban-ts-comment": [
+      "error",
+      {
+        "minimumDescriptionLength": 10
+      }
+    ],
+    "@typescript-eslint/no-extraneous-class": "error",
+    "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/no-require-imports": "error",
+    "@typescript-eslint/no-inferrable-types": "error",
+    "@typescript-eslint/array-type": "error",
+    "@typescript-eslint/consistent-generic-constructors": "error",
+    "@typescript-eslint/consistent-indexed-object-style": "error",
+    "@typescript-eslint/prefer-for-of": "error",
+    "@typescript-eslint/prefer-function-type": "error",
+    "unused-imports/no-unused-vars": [
+      "warn",
+      {
+        "vars": "all",
+        "varsIgnorePattern": "^_",
+        "args": "after-used",
+        "argsIgnorePattern": "^_"
+      }
+    ],
+    "unused-imports/no-unused-imports": "warn"
+  },
+  "jsPlugins": ["eslint-plugin-unused-imports"]
+}
