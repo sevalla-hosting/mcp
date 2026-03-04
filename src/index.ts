@@ -7,6 +7,7 @@ import { HTTPException } from 'hono/http-exception'
 import { cors } from 'hono/cors'
 import { createOAuthRouter } from './oauth.ts'
 import { registerProcessAnalyticsApp } from './apps/process-analytics/tools.ts'
+import { registerAppAnalyticsApp } from './apps/app-analytics/tools.ts'
 
 const PORT = parseInt(process.env.PORT || '3000', 10)
 const SEVALLA_API_BASE = 'https://api.sevalla.com'
@@ -68,6 +69,7 @@ const createMcpServer = (spec: Record<string, unknown>, token: string): McpServe
   }
 
   registerProcessAnalyticsApp(server, createAuthenticatedFetch(token))
+  registerAppAnalyticsApp(server, createAuthenticatedFetch(token))
 
   return server
 }
