@@ -51,7 +51,9 @@ const ProcessAnalyticsApp = () => {
   })
 
   const fetchMetrics = useCallback(async () => {
-    if (!app || !applicationId || !selectedProcess) return
+    if (!app || !applicationId || !selectedProcess) {
+      return
+    }
     setLoading(true)
     try {
       const { start, end } = getTimeRange(selectedTimeframe)
@@ -77,17 +79,20 @@ const ProcessAnalyticsApp = () => {
     fetchMetrics()
   }, [fetchMetrics])
 
-  if (error) return <div className="loading">Error: {error.message}</div>
-  if (!app) return <div className="loading">Connecting...</div>
-  if (!applicationId) return <div className="loading">Waiting for application data...</div>
+  if (error) {
+    return <div className="loading">Error: {error.message}</div>
+  }
+  if (!app) {
+    return <div className="loading">Connecting...</div>
+  }
+  if (!applicationId) {
+    return <div className="loading">Waiting for application data...</div>
+  }
 
   return (
     <div className="app">
       <div className="toolbar">
-        <select
-          value={selectedProcess ?? ''}
-          onChange={(e) => setSelectedProcess(e.target.value)}
-        >
+        <select value={selectedProcess ?? ''} onChange={(e) => setSelectedProcess(e.target.value)}>
           {processes.map((p) => (
             <option key={p.id} value={p.id}>
               {p.display_name || p.key}
@@ -110,20 +115,13 @@ const ProcessAnalyticsApp = () => {
         <div className="loading">Loading metrics...</div>
       ) : metrics ? (
         <div className="charts-grid">
-          <CpuChart
-            cpuUsage={metrics.cpuUsage}
-            cpuLimit={metrics.cpuLimit}
-            hoursAgo={selectedTimeframe.hoursAgo}
-          />
+          <CpuChart cpuUsage={metrics.cpuUsage} cpuLimit={metrics.cpuLimit} hoursAgo={selectedTimeframe.hoursAgo} />
           <MemoryChart
             memoryUsage={metrics.memoryUsage}
             memoryLimit={metrics.memoryLimit}
             hoursAgo={selectedTimeframe.hoursAgo}
           />
-          <InstanceChart
-            instanceCount={metrics.instanceCount}
-            hoursAgo={selectedTimeframe.hoursAgo}
-          />
+          <InstanceChart instanceCount={metrics.instanceCount} hoursAgo={selectedTimeframe.hoursAgo} />
         </div>
       ) : (
         <div className="loading">No data</div>

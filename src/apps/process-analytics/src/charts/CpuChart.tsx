@@ -1,13 +1,5 @@
 import { useMemo } from 'react'
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatDateTime } from '../../../../shared/lib/formatters.ts'
 
 type Props = {
@@ -70,8 +62,8 @@ export const CpuChart = ({ cpuUsage, cpuLimit, hoursAgo }: Props) => {
           />
           <Tooltip
             labelFormatter={(v) => new Date(v).toLocaleString()}
-            formatter={(v: number, name: string) => [
-              `${v.toFixed(2)}%`,
+            formatter={(v: number | undefined, name: string | undefined) => [
+              `${(v ?? 0).toFixed(2)}%`,
               name === 'usage' ? 'Usage' : 'Limit',
             ]}
             contentStyle={{

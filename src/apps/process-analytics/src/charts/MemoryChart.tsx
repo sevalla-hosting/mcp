@@ -1,13 +1,5 @@
 import { useMemo } from 'react'
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatBytes, formatDateTime } from '../../../../shared/lib/formatters.ts'
 
 type Props = {
@@ -42,9 +34,7 @@ export const MemoryChart = ({ memoryUsage, memoryLimit, hoursAgo }: Props) => {
     <div className="chart-card">
       <h3>Memory usage</h3>
       <div className="subtitle">
-        {points.length > 0 && points[0].limit > 0
-          ? `Limit: ${formatBytes(points[0].limit)}`
-          : ''}
+        {points.length > 0 && points[0].limit > 0 ? `Limit: ${formatBytes(points[0].limit)}` : ''}
       </div>
       <ResponsiveContainer width="100%" height={240}>
         <AreaChart data={points} margin={{ left: 12, right: 12 }}>
@@ -70,8 +60,8 @@ export const MemoryChart = ({ memoryUsage, memoryLimit, hoursAgo }: Props) => {
           />
           <Tooltip
             labelFormatter={(v) => new Date(v).toLocaleString()}
-            formatter={(v: number, name: string) => [
-              formatBytes(v),
+            formatter={(v: number | undefined, name: string | undefined) => [
+              formatBytes(v ?? 0),
               name === 'usage' ? 'Usage' : 'Limit',
             ]}
             contentStyle={{
