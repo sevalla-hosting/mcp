@@ -7,7 +7,7 @@
     "dev": "node --watch src/index.ts",
     "start": "node src/index.ts",
     "test": "node --test test/**/*.test.ts",
-    "check:code": "tsc --noEmit --skipLibCheck && oxlint && oxfmt --check",
+    "check:code": "tsc --noEmit --skipLibCheck && tsc --noEmit -p tsconfig.app.json && oxlint && oxfmt --check",
     "lint": "oxlint",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
