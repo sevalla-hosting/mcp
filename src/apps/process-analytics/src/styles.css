@@ -10,6 +10,8 @@
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --color-failed: oklch(0.637 0.237 25.331);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
 
   --font-sans: ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -20,6 +22,8 @@
   --chart-1: oklch(0.735 0.179 55.934);
   --chart-2: oklch(0.696 0.108 186.813);
   --color-failed: oklch(0.704 0.191 22.216);
+  --chart-3: oklch(0.529 0.09 227.392);
+  --chart-4: oklch(0.828 0.15 84.429);
 }
 
 * {
@@ -118,4 +122,69 @@ body {
   justify-content: center;
   height: 200px;
   color: var(--color-text-muted);
+}
+
+.table-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.table-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.table-label {
+  min-width: 80px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-label.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.table-bar-container {
+  flex: 1;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.table-bar {
+  height: 100%;
+  background: var(--chart-1);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.table-value {
+  min-width: 60px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-secondary {
+  min-width: 50px;
+  text-align: right;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.table-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-border);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
 }
