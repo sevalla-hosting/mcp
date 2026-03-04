@@ -12,10 +12,10 @@ export const timeframes: Timeframe[] = [
   { label: '7d', key: '7d', hoursAgo: 168, intervalInSeconds: 1800 },
 ]
 
-export const getTimeRange = (tf: Timeframe): { start: string; end: string } => {
-  const end = new Date()
-  const start = new Date(end.getTime() - tf.hoursAgo * 60 * 60 * 1000)
-  return { start: start.toISOString(), end: end.toISOString() }
+export const getTimeRange = (tf: Timeframe): { from: string; to: string } => {
+  const to = new Date()
+  const from = new Date(to.getTime() - tf.hoursAgo * 60 * 60 * 1000)
+  return { from: from.toISOString(), to: to.toISOString() }
 }
 
 export const getXAxisDateFormat = (hoursAgo: number): string => {

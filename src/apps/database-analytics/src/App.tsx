@@ -4,9 +4,9 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { useCallback, useEffect, useState } from 'react'
 import { timeframes, getTimeRange } from '../../../shared/lib/timeframes.ts'
 import type { Timeframe } from '../../../shared/lib/timeframes.ts'
-import { CpuChart } from '../../process-analytics/src/charts/CpuChart.tsx'
-import { MemoryChart } from '../../process-analytics/src/charts/MemoryChart.tsx'
-import { StorageChart } from './charts/StorageChart.tsx'
+import { CpuChart } from '../../../shared/components/CpuChart.tsx'
+import { MemoryChart } from '../../../shared/components/MemoryChart.tsx'
+import { StorageChart } from '../../../shared/components/StorageChart.tsx'
 import './styles.css'
 
 type MetricsData = {
@@ -49,10 +49,10 @@ const DatabaseAnalyticsApp = () => {
     }
     setLoading(true)
     try {
-      const { start, end } = getTimeRange(selectedTimeframe)
+      const { from, to } = getTimeRange(selectedTimeframe)
       const result = await app.callServerTool({
         name: 'get-database-metrics',
-        arguments: { database_id: databaseId, start, end, interval_in_seconds: selectedTimeframe.intervalInSeconds },
+        arguments: { database_id: databaseId, from, to, interval_in_seconds: selectedTimeframe.intervalInSeconds },
       })
       setMetrics(JSON.parse(extractText(result)))
     } catch (e) {

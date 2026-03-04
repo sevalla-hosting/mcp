@@ -1,40 +1,42 @@
 import { useMemo } from 'react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { formatBytes, formatDateTime } from '../../../../shared/lib/formatters.ts'
+import { formatDateTime } from '../lib/formatters.ts'
 
 type Props = {
-  storageUsage: { time: string; value: string }[]
-  storageLimit: { time: string; value: string }[]
+  cpuUsage: { time: string; value: string }[]
+  cpuLimit: { time: string; value: string }[]
   hoursAgo: number
 }
 
-export const StorageChart = ({ storageUsage, storageLimit, hoursAgo }: Props) => {
+export const CpuChart = ({ cpuUsage, cpuLimit, hoursAgo }: Props) => {
   const points = useMemo(() => {
-    const map = new Map<number, { time: number; usage: number; limit: number }>()
+    const usageMap = new Map<number, { time: number; usage: number; limit: number }>()
 
-    for (const p of storageUsage) {
+    for (const p of cpuUsage) {
       const time = Number(p.time)
-      map.set(time, { time, usage: Number(p.value), limit: 0 })
+      usageMap.set(time, { time, usage: Number(p.value) * 100, limit: 0 })
     }
 
-    for (const p of storageLimit) {
+    for (const p of cpuLimit) {
       const time = Number(p.time)
-      const existing = map.get(time)
+      const existing = usageMap.get(time)
       if (existing) {
-        existing.limit = Number(p.value)
+        existing.limit = Number(p.value) * 100
       } else {
-        map.set(time, { time, usage: 0, limit: Number(p.value) })
+        usageMap.set(time, { time, usage: 0, limit: Number(p.value) * 100 })
       }
     }
 
-    return Array.from(map.values()).sort((a, b) => a.time - b.time)
-  }, [storageUsage, storageLimit])
+    return Array.from(usageMap.values()).sort((a, b) => a.time - b.time)
+  }, [cpuUsage, cpuLimit])
 
   return (
     <div className="chart-card">
-      <h3>Storage usage</h3>
+      <h3>CPU usage</h3>
       <div className="subtitle">
-        {points.length > 0 && points[0].limit > 0 ? `Limit: ${formatBytes(points[0].limit)}` : ''}
+        {points.length > 0 && points[0].limit > 0
+          ? `Limit: ${(points[0].limit / 100).toFixed(1)} core / ${points[0].limit.toFixed(0)}%`
+          : ''}
       </div>
       <ResponsiveContainer width="100%" height={240}>
         <AreaChart data={points} margin={{ left: 12, right: 12 }}>
@@ -54,14 +56,14 @@ export const StorageChart = ({ storageUsage, storageLimit, hoursAgo }: Props) =>
             tickLine={false}
             axisLine={false}
             tickMargin={8}
-            tickFormatter={(v) => formatBytes(v)}
+            tickFormatter={(v) => `${v.toFixed(0)}%`}
             domain={[0, (max: number) => Math.max(max, points[0]?.limit ?? 0) * 1.2]}
             style={{ fontSize: 11 }}
           />
           <Tooltip
             labelFormatter={(v) => new Date(v).toLocaleString()}
             formatter={(v: number | undefined, name: string | undefined) => [
-              formatBytes(v ?? 0),
+              `${(v ?? 0).toFixed(2)}%`,
               name === 'usage' ? 'Usage' : 'Limit',
             ]}
             contentStyle={{

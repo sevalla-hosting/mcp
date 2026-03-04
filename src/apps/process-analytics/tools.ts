@@ -65,15 +65,15 @@ export const registerProcessAnalyticsApp = (server: McpServer, apiFetch: typeof 
       inputSchema: {
         application_id: z.string().describe('The application ID'),
         process_id: z.string().describe('The process ID'),
-        start: z.string().describe('Start time in ISO 8601 format'),
-        end: z.string().describe('End time in ISO 8601 format'),
+        from: z.string().describe('Start time in ISO 8601 format'),
+        to: z.string().describe('End time in ISO 8601 format'),
         interval_in_seconds: z.number().describe('Interval between data points in seconds'),
       },
     },
-    async ({ application_id, process_id, start, end, interval_in_seconds }) => {
+    async ({ application_id, process_id, from, to, interval_in_seconds }) => {
       const query = new URLSearchParams({
-        start,
-        end,
+        from,
+        to,
         interval_in_seconds: String(interval_in_seconds),
       })
 
@@ -92,7 +92,7 @@ export const registerProcessAnalyticsApp = (server: McpServer, apiFetch: typeof 
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify({ application_id, process_id, start, end, interval_in_seconds, metrics }),
+            text: JSON.stringify({ application_id, process_id, from, to, interval_in_seconds, metrics }),
           },
         ],
       }

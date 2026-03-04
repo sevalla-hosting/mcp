@@ -60,13 +60,13 @@ const StaticSiteAnalyticsApp = () => {
     }
     setLoading(true)
     try {
-      const { start, end } = getTimeRange(selectedTimeframe)
+      const { from, to } = getTimeRange(selectedTimeframe)
       const result = await app.callServerTool({
         name: 'get-static-site-http-metrics',
         arguments: {
           static_site_id: staticSiteId,
-          start,
-          end,
+          from,
+          to,
           interval_in_seconds: selectedTimeframe.intervalInSeconds,
         },
       })

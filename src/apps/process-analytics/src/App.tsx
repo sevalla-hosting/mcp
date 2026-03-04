@@ -4,9 +4,9 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { useCallback, useEffect, useState } from 'react'
 import { timeframes, getTimeRange } from '../../../shared/lib/timeframes.ts'
 import type { Timeframe } from '../../../shared/lib/timeframes.ts'
-import { CpuChart } from './charts/CpuChart.tsx'
-import { MemoryChart } from './charts/MemoryChart.tsx'
-import { InstanceChart } from './charts/InstanceChart.tsx'
+import { CpuChart } from '../../../shared/components/CpuChart.tsx'
+import { MemoryChart } from '../../../shared/components/MemoryChart.tsx'
+import { InstanceChart } from '../../../shared/components/InstanceChart.tsx'
 import './styles.css'
 
 type Process = { id: string; display_name: string; key: string }
@@ -56,14 +56,14 @@ const ProcessAnalyticsApp = () => {
     }
     setLoading(true)
     try {
-      const { start, end } = getTimeRange(selectedTimeframe)
+      const { from, to } = getTimeRange(selectedTimeframe)
       const result = await app.callServerTool({
         name: 'get-process-metrics',
         arguments: {
           application_id: applicationId,
           process_id: selectedProcess,
-          start,
-          end,
+          from,
+          to,
           interval_in_seconds: selectedTimeframe.intervalInSeconds,
         },
       })

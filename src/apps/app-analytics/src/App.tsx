@@ -60,13 +60,13 @@ const AppAnalyticsApp = () => {
     }
     setLoading(true)
     try {
-      const { start, end } = getTimeRange(selectedTimeframe)
+      const { from, to } = getTimeRange(selectedTimeframe)
       const result = await app.callServerTool({
         name: 'get-app-http-metrics',
         arguments: {
           application_id: applicationId,
-          start,
-          end,
+          from,
+          to,
           interval_in_seconds: selectedTimeframe.intervalInSeconds,
         },
       })

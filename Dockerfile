@@ -7,6 +7,11 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
+
+COPY src/ src/
+COPY tsconfig.app.json vite.config.ts ./
+RUN pnpm build:app
+
 RUN pnpm prune --prod
 
 FROM node:24-alpine
@@ -16,6 +21,7 @@ RUN apk add --no-cache libstdc++
 WORKDIR /app
 
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
 COPY package.json ./
 COPY src/ src/
 

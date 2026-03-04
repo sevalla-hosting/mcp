@@ -35,13 +35,13 @@ export const registerAppAnalyticsApp = (server: McpServer, apiFetch: typeof fetc
       description: 'Fetch HTTP analytics metrics for an application',
       inputSchema: {
         application_id: z.string().describe('The application ID'),
-        start: z.string().describe('Start time in ISO 8601 format'),
-        end: z.string().describe('End time in ISO 8601 format'),
+        from: z.string().describe('Start time in ISO 8601 format'),
+        to: z.string().describe('End time in ISO 8601 format'),
         interval_in_seconds: z.number().describe('Interval between data points in seconds'),
       },
     },
-    async ({ application_id, start, end, interval_in_seconds }) => {
-      const qs = new URLSearchParams({ start, end, interval_in_seconds: String(interval_in_seconds) })
+    async ({ application_id, from, to, interval_in_seconds }) => {
+      const qs = new URLSearchParams({ from, to, interval_in_seconds: String(interval_in_seconds) })
       const base = `https://api.sevalla.com/applications/${application_id}/metrics`
 
       const [
@@ -56,7 +56,7 @@ export const registerAppAnalyticsApp = (server: McpServer, apiFetch: typeof fetc
         slowestRequests,
       ] = await Promise.all([
         apiFetch(`${base}/requests-per-minute?${qs}`).then((r) => r.json()),
-        apiFetch(`${base}/response-time?${qs}`).then((r) => r.json()),
+        apiFetch(`${base}/response-time-avg?${qs}`).then((r) => r.json()),
         apiFetch(`${base}/response-time?${qs}&percent=90`).then((r) => r.json()),
         apiFetch(`${base}/response-time?${qs}&percent=95`).then((r) => r.json()),
         apiFetch(`${base}/response-time?${qs}&percent=99`).then((r) => r.json()),

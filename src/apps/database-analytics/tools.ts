@@ -36,13 +36,13 @@ export const registerDatabaseAnalyticsApp = (server: McpServer, apiFetch: typeof
       description: 'Fetch CPU, memory, and storage metrics for a database',
       inputSchema: {
         database_id: z.string().describe('The database ID'),
-        start: z.string().describe('Start time in ISO 8601 format'),
-        end: z.string().describe('End time in ISO 8601 format'),
+        from: z.string().describe('Start time in ISO 8601 format'),
+        to: z.string().describe('End time in ISO 8601 format'),
         interval_in_seconds: z.number().describe('Interval between data points in seconds'),
       },
     },
-    async ({ database_id, start, end, interval_in_seconds }) => {
-      const query = new URLSearchParams({ start, end, interval_in_seconds: String(interval_in_seconds) })
+    async ({ database_id, from, to, interval_in_seconds }) => {
+      const query = new URLSearchParams({ from, to, interval_in_seconds: String(interval_in_seconds) })
 
       const results = await Promise.all(
         METRICS.map(async (metric) => {
@@ -55,7 +55,7 @@ export const registerDatabaseAnalyticsApp = (server: McpServer, apiFetch: typeof
 
       return {
         content: [
-          { type: 'text' as const, text: JSON.stringify({ database_id, start, end, interval_in_seconds, metrics }) },
+          { type: 'text' as const, text: JSON.stringify({ database_id, from, to, interval_in_seconds, metrics }) },
         ],
       }
     },

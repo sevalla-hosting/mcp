@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { formatDateTime } from '../../../../shared/lib/formatters.ts'
+import { formatDateTime } from '../lib/formatters.ts'
 
 type Props = {
   instanceCount: { time: string; value: string }[]
