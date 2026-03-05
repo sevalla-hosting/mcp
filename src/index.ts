@@ -6,6 +6,7 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { cors } from 'hono/cors'
 import { createOAuthRouter } from './oauth.ts'
+import { INDEX_HTML } from './html.ts'
 
 const PORT = parseInt(process.env.PORT || '3000', 10)
 const SEVALLA_API_BASE = 'https://api.sevalla.com'
@@ -80,6 +81,8 @@ app.use(
     exposeHeaders: ['mcp-session-id', 'mcp-protocol-version'],
   }),
 )
+
+app.get('/', (c) => c.html(INDEX_HTML))
 
 app.get('/health', (c) => {
   if (isShuttingDown) {
