@@ -99,7 +99,14 @@ async () => {
 
   return {
     name: 'search',
+    title: 'Search Sevalla API Spec',
     description: parts.join('\n\n'),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
     inputSchema: z.object({
       code: z.string().describe('JavaScript async arrow function to search the `spec` object'),
     }),
@@ -128,6 +135,13 @@ declare const ${namespace}: {
 
   return {
     name: 'execute',
+    title: 'Execute Sevalla API Call',
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
     description: `Execute API calls by writing JavaScript code. First use the 'search' tool to find the right endpoints.
 
 Available in your code:
@@ -172,7 +186,9 @@ async () => {
 
 export interface ToolDefinition {
   name: string
+  title: string
   description: string
+  annotations: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; openWorldHint: boolean }
   inputSchema: z.ZodObject<any>
   handler: (_args: { code: string }) => Promise<{ content: { type: 'text'; text: string }[]; isError?: boolean }>
 }
