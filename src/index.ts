@@ -90,7 +90,10 @@ app.use(
 app.get('/', (c) => c.html(INDEX_HTML))
 
 app.get('/.well-known/glama.json', (c) => {
-  return c.json({ $schema: 'https://glama.ai/mcp/schemas/server.json', maintainers: ['kotapeter', 'kristofdombi'] })
+  return c.json({
+    $schema: 'https://glama.ai/mcp/schemas/connector.json',
+    maintainers: [{ email: 'kotapeter@gmail.com' }, { email: 'kristof@sevalla.com' }],
+  })
 })
 
 app.get('/health', (c) => {
