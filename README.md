@@ -21,7 +21,7 @@ A remote [Model Context Protocol](https://modelcontextprotocol.io/) server that 
 
 This reduces context window usage by ~99% compared to traditional one-tool-per-endpoint approaches.
 
-[![Sevalla server MCP server](https://glama.ai/mcp/servers/sevalla-hosting/mcp/badges/card.svg)](https://glama.ai/mcp/servers/sevalla-hosting/mcp)
+[![Sevalla server MCP server](https://glama.ai/mcp/servers/sevalla-hosting/mcp/badges/card.svg?v=2)](https://glama.ai/mcp/servers/sevalla-hosting/mcp)
 
 ## Background
 
