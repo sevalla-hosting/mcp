@@ -1,12 +1,18 @@
 import { serve } from '@hono/node-server'
 import { StreamableHTTPTransport } from '@hono/mcp'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createTools } from './sandbox/index.ts'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { cors } from 'hono/cors'
 import { createOAuthRouter } from './oauth.ts'
 import { INDEX_HTML } from './html.ts'
+
+const IS_STDIO = process.argv.includes('--stdio')
+if (IS_STDIO) {
+  console.log = console.error
+}
 
 const PORT = parseInt(process.env.PORT || '3000', 10)
 const SEVALLA_API_BASE = 'https://api.sevalla.com'
@@ -153,34 +159,43 @@ app.post('/mcp', async (c) => {
   }
 })
 
-await loadSpec()
-console.log(`Sevalla MCP server starting on port ${PORT}`)
+if (IS_STDIO) {
+  const spec = await loadSpec()
+  const token = process.env.SEVALLA_API_KEY || ''
+  const mcpServer = createMcpServer(spec, token)
+  const transport = new StdioServerTransport()
+  await mcpServer.connect(transport)
+  console.log('Sevalla MCP server running in stdio mode')
+} else {
+  await loadSpec()
+  console.log(`Sevalla MCP server starting on port ${PORT}`)
 
-const server = serve({
-  fetch: app.fetch,
-  port: PORT,
-})
-
-const shutdown = (signal: string) => {
-  if (isShuttingDown) {
-    return
-  }
-  isShuttingDown = true
-  console.log(`${signal} received, starting graceful shutdown...`)
-
-  const forceExit = setTimeout(() => {
-    console.error('Graceful shutdown timed out, forcing exit')
-    process.exit(1)
-  }, SHUTDOWN_TIMEOUT_MS)
-  forceExit.unref()
-
-  server.close(() => {
-    console.log('All connections closed, exiting')
-    process.exit(0)
+  const server = serve({
+    fetch: app.fetch,
+    port: PORT,
   })
+
+  const shutdown = (signal: string) => {
+    if (isShuttingDown) {
+      return
+    }
+    isShuttingDown = true
+    console.log(`${signal} received, starting graceful shutdown...`)
+
+    const forceExit = setTimeout(() => {
+      console.error('Graceful shutdown timed out, forcing exit')
+      process.exit(1)
+    }, SHUTDOWN_TIMEOUT_MS)
+    forceExit.unref()
+
+    server.close(() => {
+      console.log('All connections closed, exiting')
+      process.exit(0)
+    })
+  }
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'))
+  process.on('SIGINT', () => shutdown('SIGINT'))
+
+  console.log(`Sevalla MCP server listening on http://localhost:${PORT}`)
 }
-
-process.on('SIGTERM', () => shutdown('SIGTERM'))
-process.on('SIGINT', () => shutdown('SIGINT'))
-
-console.log(`Sevalla MCP server listening on http://localhost:${PORT}`)
