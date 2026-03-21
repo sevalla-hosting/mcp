@@ -21,6 +21,8 @@ A remote [Model Context Protocol](https://modelcontextprotocol.io/) server that 
 
 This reduces context window usage by ~99% compared to traditional one-tool-per-endpoint approaches.
 
+[![Sevalla server MCP server](https://glama.ai/mcp/servers/sevalla-hosting/mcp/badges/card.svg)](https://glama.ai/mcp/servers/sevalla-hosting/mcp)
+
 ## Background
 
 Cloudflare came up with the [Code Mode MCP](https://blog.cloudflare.com/code-mode-mcp/) pattern: instead of registering one tool per API endpoint, you give the agent two tools. One to search the API spec, one to execute code against it. Simple idea, massive difference in practice.
