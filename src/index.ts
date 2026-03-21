@@ -89,6 +89,12 @@ app.use(
 
 app.get('/', (c) => c.html(INDEX_HTML))
 
+app.get('/.well-known/glama.json', async (c) => {
+  const { readFile } = await import('node:fs/promises')
+  const content = await readFile(new URL('../../glama.json', import.meta.url), 'utf-8')
+  return c.json(JSON.parse(content))
+})
+
 app.get('/health', (c) => {
   if (isShuttingDown) {
     return c.json({ status: 'shutting_down' }, 503)
