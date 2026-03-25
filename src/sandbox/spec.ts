@@ -59,25 +59,10 @@ export const resolveRefs = (
   return out
 }
 
-const extractServerBasePath = (spec: any): string => {
-  const serverUrl = spec.servers?.[0]?.url
-  if (!serverUrl) {
-    return ''
-  }
-  try {
-    return new URL(serverUrl).pathname.replace(/\/+$/, '')
-  } catch {
-    const match = serverUrl.match(/^https?:\/\/[^/]+(\/.*?)?\/?$/)
-    return match?.[1]?.replace(/\/+$/, '') ?? ''
-  }
-}
-
 export const processSpec = (spec: any, maxRefDepth = DEFAULT_MAX_REF_DEPTH): { paths: Record<string, any> } => {
-  const basePath = extractServerBasePath(spec)
   const paths: Record<string, any> = {}
 
   for (const [path, methods] of Object.entries(spec.paths ?? {})) {
-    const fullPath = basePath + path
     const pathItem: Record<string, any> = {}
 
     for (const method of HTTP_METHODS) {
@@ -96,7 +81,7 @@ export const processSpec = (spec: any, maxRefDepth = DEFAULT_MAX_REF_DEPTH): { p
     }
 
     if (Object.keys(pathItem).length > 0) {
-      paths[fullPath] = pathItem
+      paths[path] = pathItem
     }
   }
 

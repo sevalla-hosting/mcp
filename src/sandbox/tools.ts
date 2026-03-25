@@ -43,6 +43,7 @@ declare const spec: {
 const createSearchDefinition = (context: { tags: string[]; endpointCount: number }) => {
   const parts: string[] = []
   parts.push('Search the API specification to discover available endpoints. All $refs are pre-resolved inline.')
+  parts.push('Paths in `spec.paths` are ready to pass to the execute tool unchanged.')
 
   if (context.tags.length > 0) {
     const shown = context.tags.slice(0, 30).join(', ')
@@ -144,6 +145,8 @@ declare const ${namespace}: {
     },
     description: `Execute API calls by writing JavaScript code. First use the 'search' tool to find the right endpoints.
 
+Use the exact path returned by the search tool. Do not pass a full URL or add an extra API version prefix.
+
 Available in your code:
 ${types}
 Your code must be an async arrow function that returns the result.
@@ -152,7 +155,7 @@ Examples:
 
 // List resources
 async () => {
-  const res = await ${namespace}.request({ method: "GET", path: "/v1/items" });
+  const res = await ${namespace}.request({ method: "GET", path: "/items" });
   return res.body;
 }
 
@@ -160,7 +163,7 @@ async () => {
 async () => {
   const res = await ${namespace}.request({
     method: "POST",
-    path: "/v1/items",
+    path: "/items",
     body: { name: "Widget" }
   });
   return { status: res.status, body: res.body };
@@ -168,10 +171,10 @@ async () => {
 
 // Chain multiple calls
 async () => {
-  const list = await ${namespace}.request({ method: "GET", path: "/v1/items" });
+  const list = await ${namespace}.request({ method: "GET", path: "/items" });
   const details = await Promise.all(
     list.body.map(item =>
-      ${namespace}.request({ method: "GET", path: \`/v1/items/\${item.id}\` })
+      ${namespace}.request({ method: "GET", path: \`/items/\${item.id}\` })
     )
   );
   return details.map(d => d.body);

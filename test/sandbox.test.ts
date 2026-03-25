@@ -48,7 +48,7 @@ describe('resolveRefs', () => {
 })
 
 describe('processSpec', () => {
-  it('extracts operations with server base path prepended', () => {
+  it('extracts operations without prepending the server base path', () => {
     const spec = {
       servers: [{ url: 'https://api.example.com/v3' }],
       paths: {
@@ -60,10 +60,10 @@ describe('processSpec', () => {
       components: {},
     }
     const result = processSpec(spec)
-    strictEqual(result.paths['/v3/items'] !== undefined, true)
-    strictEqual(result.paths['/v3/items'].get.summary, 'List items')
-    strictEqual(result.paths['/v3/items'].post.summary, 'Create item')
-    strictEqual(result.paths['/items'], undefined)
+    strictEqual(result.paths['/items'] !== undefined, true)
+    strictEqual(result.paths['/items'].get.summary, 'List items')
+    strictEqual(result.paths['/items'].post.summary, 'Create item')
+    strictEqual(result.paths['/v3/items'], undefined)
   })
 
   it('drops fields not in the extraction list', () => {
@@ -275,6 +275,8 @@ describe('createTools', () => {
     })
     const execDesc = tools.definitions[1].description
     strictEqual(execDesc.includes('myapi'), true)
+    strictEqual(execDesc.includes('path: "/items"'), true)
+    strictEqual(execDesc.includes('/v1/items'), false)
   })
 
   it('search tool handler executes code against processed spec', async () => {
@@ -288,6 +290,19 @@ describe('createTools', () => {
       code: 'async () => Object.keys(spec.paths).length',
     })
     strictEqual(result.content[0].text, '2')
+  })
+
+  it('search tool exposes execute-ready paths', async () => {
+    const tools = createTools({
+      spec: mockSpec,
+      request: async () => new Response('{}'),
+      baseUrl: 'https://api.example.com',
+      namespace: 'myapi',
+    })
+    const result = await tools.definitions[0].handler({
+      code: 'async () => Object.keys(spec.paths)',
+    })
+    deepStrictEqual(JSON.parse(result.content[0].text), ['/items', '/users'])
   })
 
   it('inputSchema is a Zod schema with code property', () => {
