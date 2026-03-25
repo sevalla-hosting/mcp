@@ -170,11 +170,11 @@ describe('featureName', () => {
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `PORT` | No | Server port (default: 3000) |
-| `OAUTH_SECRET` | Prod only | Base64url-encoded 32-byte key for signing/encryption |
-| `PUBLIC_URL` | No | Public-facing URL (default: https://mcp.sevalla.com) |
-| `SEVALLA_FRONTEND_URL` | No | Sevalla frontend URL (default: https://app.sevalla.com) |
-| `NODE_ENV` | No | Set to `production` to require OAUTH_SECRET |
-| `SHUTDOWN_TIMEOUT_MS` | No | Graceful shutdown timeout (default: 30000) |
+| Variable               | Required  | Description                                             |
+| ---------------------- | --------- | ------------------------------------------------------- |
+| `PORT`                 | No        | Server port (default: 3000)                             |
+| `OAUTH_SECRET`         | Prod only | Base64url-encoded 32-byte key for signing/encryption    |
+| `PUBLIC_URL`           | No        | Public-facing URL (default: https://mcp.sevalla.com)    |
+| `SEVALLA_FRONTEND_URL` | No        | Sevalla frontend URL (default: https://app.sevalla.com) |
+| `NODE_ENV`             | No        | Set to `production` to require OAUTH_SECRET             |
+| `SHUTDOWN_TIMEOUT_MS`  | No        | Graceful shutdown timeout (default: 30000)              |
