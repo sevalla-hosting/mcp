@@ -2,12 +2,13 @@ import { serve } from '@hono/node-server'
 import { StreamableHTTPTransport } from '@hono/mcp'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { createTools } from './sandbox/index.ts'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { cors } from 'hono/cors'
+import { createAuthenticatedFetch, SEVALLA_API_BASE, SEVALLA_SPEC_URL } from './api.ts'
 import { createOAuthRouter } from './oauth.ts'
 import { INDEX_HTML } from './html.ts'
+import { createTools } from './sandbox/index.ts'
 
 const IS_STDIO = process.argv.includes('--stdio')
 if (IS_STDIO) {
@@ -15,8 +16,6 @@ if (IS_STDIO) {
 }
 
 const PORT = parseInt(process.env.PORT || '3000', 10)
-const SEVALLA_API_BASE = 'https://api.sevalla.com'
-const SEVALLA_SPEC_URL = 'https://api.sevalla.com/v3/openapi.json'
 const SHUTDOWN_TIMEOUT_MS = parseInt(process.env.SHUTDOWN_TIMEOUT_MS || '30000', 10)
 
 let specPromise: Promise<Record<string, unknown>> | null = null
@@ -37,19 +36,6 @@ const loadSpec = (): Promise<Record<string, unknown>> => {
     })()
   }
   return specPromise
-}
-
-const createAuthenticatedFetch = (token: string) => {
-  return async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
-    const url = typeof input === 'string' ? new URL(input) : new URL(input.toString())
-    url.pathname = '/v3' + url.pathname
-
-    const headers = new Headers(init?.headers)
-    headers.set('Authorization', `Bearer ${token}`)
-    headers.set('Content-Type', 'application/json')
-
-    return fetch(url.toString(), { ...init, headers })
-  }
 }
 
 const createMcpServer = (spec: Record<string, unknown>, token: string): McpServer => {

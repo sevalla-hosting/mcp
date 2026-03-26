@@ -3,6 +3,10 @@
   "packageManager": "pnpm@10.30.3",
   "version": "1.0.0",
   "type": "module",
+  "volta": {
+    "node": "24.14.0",
+    "pnpm": "10.30.3"
+  },
   "scripts": {
     "dev": "node --watch src/index.ts",
     "start": "node src/index.ts",
