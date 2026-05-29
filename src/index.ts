@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { serve } from '@hono/node-server'
 import { StreamableHTTPTransport } from '@hono/mcp'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -7,8 +8,9 @@ import { HTTPException } from 'hono/http-exception'
 import { cors } from 'hono/cors'
 import { createAuthenticatedFetch, SEVALLA_API_BASE, SEVALLA_SPEC_URL } from './api.ts'
 import { createOAuthRouter, getBearerAuthChallenge } from './oauth.ts'
-import { INDEX_HTML } from './html.ts'
 import { createTools } from './sandbox/index.ts'
+
+const INDEX_HTML = readFileSync(new URL('./index.html', import.meta.url), 'utf8')
 
 const IS_STDIO = process.argv.includes('--stdio')
 if (IS_STDIO) {
@@ -147,14 +149,17 @@ app.post('/mcp', async (c) => {
   }
 })
 
-if (IS_STDIO) {
-  const spec = await loadSpec()
-  const token = process.env.SEVALLA_API_KEY || ''
-  const mcpServer = createMcpServer(spec, token)
-  const transport = new StdioServerTransport()
-  await mcpServer.connect(transport)
-  console.log('Sevalla MCP server running in stdio mode')
-} else {
+const startServer = async () => {
+  if (IS_STDIO) {
+    const spec = await loadSpec()
+    const token = process.env.SEVALLA_API_KEY || ''
+    const mcpServer = createMcpServer(spec, token)
+    const transport = new StdioServerTransport()
+    await mcpServer.connect(transport)
+    console.log('Sevalla MCP server running in stdio mode')
+    return
+  }
+
   await loadSpec()
   console.log(`Sevalla MCP server starting on port ${PORT}`)
 
@@ -186,4 +191,14 @@ if (IS_STDIO) {
   process.on('SIGINT', () => shutdown('SIGINT'))
 
   console.log(`Sevalla MCP server listening on http://localhost:${PORT}`)
+}
+
+export { app, loadSpec, createMcpServer }
+
+export const __setShuttingDown = (value: boolean) => {
+  isShuttingDown = value
+}
+
+if (import.meta.main) {
+  await startServer()
 }

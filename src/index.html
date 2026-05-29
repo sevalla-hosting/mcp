@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sevalla MCP</title>
+    <meta
+      name="description"
+      content="Connect AI coding agents to Sevalla — a hosted Model Context Protocol endpoint for your platform."
+    />
+    <link rel="icon" href="https://sevalla.com/favicon.ico" type="image/x-icon" sizes="48x48" />
+    <link rel="icon" href="https://sevalla.com/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+      @theme {
+        --font-display: 'Funnel Display', sans-serif;
+        --font-body: 'Manrope', sans-serif;
+        --color-brand: #fa7216;
+        --color-brand-600: #e5630c;
+      }
+
+      @layer components {
+        .fade-up {
+          opacity: 0;
+          animation: fadeUp 750ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        @keyframes fadeUp {
+          from {
+            opacity: 0;
+            transform: translateY(18px);
+          }
+          to {
+            opacity: 1;
+            transform: none;
+          }
+        }
+
+        /* Segmented control */
+        .seg {
+          position: relative;
+        }
+        .seg-slider {
+          position: absolute;
+          top: 0.25rem;
+          bottom: 0.25rem;
+          left: 0;
+          width: 0;
+          border-radius: 0.6rem;
+          background: #fff;
+          box-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.06),
+            0 2px 7px rgba(0, 0, 0, 0.07);
+          transition:
+            transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
+            width 360ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .seg-btn {
+          position: relative;
+          z-index: 1;
+          color: var(--color-stone-400);
+          transition: color 220ms ease;
+        }
+        .seg-btn:hover {
+          color: var(--color-stone-600);
+        }
+        .seg-btn[aria-selected='true'] {
+          color: var(--color-brand-600);
+        }
+
+        /* Endpoint + code copy */
+        .copyable {
+          position: relative;
+          overflow: hidden;
+          cursor: pointer;
+          user-select: none;
+          transition:
+            box-shadow 400ms ease,
+            border-color 200ms ease,
+            transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .copyable:active {
+          transform: scale(0.99);
+        }
+        .copyable .copy-target {
+          transition:
+            color 300ms ease,
+            transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .copyable.copied .copy-target {
+          color: #22c55e;
+          transform: scale(1.15);
+        }
+        .code-block {
+          position: relative;
+          cursor: pointer;
+          overflow: hidden;
+          user-select: none;
+          border-radius: 0.85rem;
+          background-color: #1b1917;
+          padding: 0.95rem 3rem 0.95rem 1.05rem;
+          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+          font-size: 0.825rem;
+          line-height: 1.55;
+          color: var(--color-stone-100);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          transition:
+            box-shadow 450ms ease,
+            transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .code-block:hover {
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.06),
+            inset 0 0 0 1px var(--color-stone-700);
+        }
+        .code-block:active {
+          transform: scale(0.985);
+        }
+        .code-block:focus-visible {
+          outline: none;
+          box-shadow: 0 0 0 2px var(--color-brand);
+        }
+        .code-block pre {
+          margin: 0;
+        }
+        .code-block .copy-btn {
+          transition:
+            color 300ms ease,
+            transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .code-block.copied .copy-btn {
+          color: #4ade80;
+          transform: scale(1.15);
+        }
+        .ripple {
+          position: absolute;
+          border-radius: 9999px;
+          pointer-events: none;
+          background: radial-gradient(circle, rgba(250, 114, 22, 0.45) 0%, rgba(250, 114, 22, 0) 70%);
+          transform: scale(0);
+          opacity: 1;
+          will-change: transform, opacity;
+          transition:
+            transform 820ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 820ms ease-out;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .fade-up {
+            opacity: 1;
+            animation: none;
+          }
+          .seg-slider,
+          .copyable,
+          .copyable .copy-target,
+          .code-block,
+          .code-block .copy-btn,
+          .ripple {
+            transition: none;
+          }
+          .ripple {
+            display: none;
+          }
+        }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen overflow-x-hidden bg-[#fbf9f7] font-body text-stone-900 antialiased">
+    <!-- Ambient background -->
+    <div class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      <div
+        class="absolute inset-0 [background-image:radial-gradient(rgba(120,113,108,0.08)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_75%_60%_at_25%_0%,#000_25%,transparent_75%)]"
+      ></div>
+      <div class="absolute -top-40 -left-24 h-[480px] w-[660px] rounded-full bg-orange-300/25 blur-[130px]"></div>
+      <div class="absolute top-1/4 -right-20 h-[380px] w-[440px] rounded-full bg-amber-200/30 blur-[120px]"></div>
+    </div>
+
+    <main
+      class="mx-auto grid min-h-screen max-w-6xl grid-cols-1 items-start gap-12 px-6 py-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16 lg:py-24"
+    >
+      <!-- LEFT — brand + endpoint -->
+      <div class="fade-up min-w-0 lg:sticky lg:top-24">
+        <div class="flex items-center gap-3.5">
+          <span class="block w-12 overflow-hidden rounded-2xl shadow-lg shadow-orange-500/20 ring-1 ring-black/5">
+            <svg viewBox="0 0 560 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sevalla">
+              <rect width="559.266" height="559.266" rx="110" fill="#FA7216" />
+              <path
+                d="M157.293 182.779H216.763V220.895C216.763 229.391 216.763 247.99 232.116 247.99H342.406L392.546 298.85C392.987 299.451 393.653 300.017 394.429 300.677C397.361 303.17 401.875 307.009 401.875 319.171V377.034H342.406V338.918C342.406 330.422 342.406 311.823 327.053 311.823H216.18L166.622 260.963C166.181 260.362 165.516 259.796 164.739 259.136C161.808 256.643 157.293 252.804 157.293 240.642V182.779Z"
+                fill="#F9F5F3"
+              />
+              <path d="M216.763 116.878V182.779L342.697 182.778V116.878H216.763Z" fill="#F9F5F3" />
+              <path d="M216.18 377.034V442.934H342.697V377.034H216.18Z" fill="#F9F5F3" />
+              <path d="M342.697 182.779L342.406 247.99H401.972L401.875 182.779H342.697Z" fill="#F9F5F3" />
+              <path d="M157.293 311.823V377.034H216.18L216.18 311.823H157.293Z" fill="#F9F5F3" />
+            </svg>
+          </span>
+          <div>
+            <p class="font-display text-xl font-semibold leading-none tracking-tight">Sevalla</p>
+            <p class="mt-1.5 text-sm leading-none text-stone-500">MCP Server</p>
+          </div>
+        </div>
+
+        <h1 class="mt-9 font-display text-4xl font-semibold leading-[1.08] tracking-tight text-stone-900 sm:text-5xl">
+          Connect your coding agent to <span class="text-brand">Sevalla</span>.
+        </h1>
+
+        <p class="mt-5 max-w-md text-lg leading-relaxed text-stone-600">
+          A hosted Model Context Protocol endpoint for deploying apps, provisioning databases, and operating your
+          platform — straight from your editor.
+        </p>
+
+        <!-- Endpoint -->
+        <div class="mt-9">
+          <p class="mb-2.5 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Endpoint</p>
+          <button
+            type="button"
+            data-copy="https://mcp.sevalla.com/mcp"
+            aria-label="Copy endpoint URL"
+            class="copyable group flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white/70 px-4 py-3.5 text-left backdrop-blur hover:border-stone-300 hover:shadow-sm"
+          >
+            <code class="relative z-10 truncate font-mono text-sm font-semibold text-stone-800"
+              >https://mcp.sevalla.com/mcp</code
+            >
+            <span class="copy-target relative z-10 text-stone-400 group-hover:text-stone-700">
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            </span>
+          </button>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="rounded-full border border-stone-200 bg-white/60 px-3 py-1 text-xs font-medium text-stone-500">
+              Streamable HTTP
+            </span>
+            <span class="rounded-full border border-stone-200 bg-white/60 px-3 py-1 text-xs font-medium text-stone-500">
+              OAuth
+            </span>
+            <span class="rounded-full border border-stone-200 bg-white/60 px-3 py-1 text-xs font-medium text-stone-500">
+              200+ endpoints
+            </span>
+          </div>
+        </div>
+
+        <div class="mt-10 flex items-center gap-4 text-sm font-medium text-stone-500">
+          <a
+            href="https://docs.sevalla.com/quick-starts/coding-agents/overview"
+            target="_blank"
+            rel="noreferrer"
+            class="inline-flex items-center gap-1 transition hover:text-stone-900"
+          >
+            Documentation
+            <svg
+              class="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M7 17 17 7M7 7h10v10" />
+            </svg>
+          </a>
+          <span class="text-stone-300">·</span>
+          <a
+            href="https://sevalla.com"
+            target="_blank"
+            rel="noreferrer"
+            class="inline-flex items-center gap-1 transition hover:text-stone-900"
+          >
+            sevalla.com
+            <svg
+              class="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M7 17 17 7M7 7h10v10" />
+            </svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- RIGHT — connect card -->
+      <div class="fade-up min-w-0" style="animation-delay: 120ms">
+        <div
+          class="overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-[0_24px_70px_-24px_rgba(31,26,22,0.22)]"
+        >
+          <!-- Segmented control -->
+          <div class="p-4 sm:p-5">
+            <div class="seg flex gap-1 rounded-2xl bg-stone-100/90 p-1" role="tablist" aria-label="Setup per client">
+              <span class="seg-slider" aria-hidden="true"></span>
+              <button
+                role="tab"
+                data-tab="claude"
+                data-name="Claude Code"
+                aria-selected="true"
+                aria-label="Claude Code"
+                title="Claude Code"
+                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
+              >
+                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path
+                    d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"
+                  />
+                </svg>
+              </button>
+              <button
+                role="tab"
+                data-tab="cursor"
+                data-name="Cursor"
+                aria-selected="false"
+                aria-label="Cursor"
+                title="Cursor"
+                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
+              >
+                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path
+                    d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23"
+                  />
+                </svg>
+              </button>
+              <button
+                role="tab"
+                data-tab="vscode"
+                data-name="VS Code"
+                aria-selected="false"
+                aria-label="VS Code"
+                title="VS Code"
+                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
+              >
+                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path
+                    d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"
+                  />
+                </svg>
+              </button>
+              <button
+                role="tab"
+                data-tab="codex"
+                data-name="Codex"
+                aria-selected="false"
+                aria-label="Codex"
+                title="Codex"
+                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
+              >
+                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path
+                    d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"
+                  />
+                </svg>
+              </button>
+              <button
+                role="tab"
+                data-tab="copilot"
+                data-name="GitHub Copilot"
+                aria-selected="false"
+                aria-label="GitHub Copilot"
+                title="GitHub Copilot"
+                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
+              >
+                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path
+                    d="M23.922 16.997C23.061 18.492 18.063 22.02 12 22.02 5.937 22.02.939 18.492.078 16.997A.641.641 0 0 1 0 16.741v-2.869a.883.883 0 0 1 .053-.22c.372-.935 1.347-2.292 2.605-2.656.167-.429.414-1.055.644-1.517a10.098 10.098 0 0 1-.052-1.086c0-1.331.282-2.499 1.132-3.368.397-.406.89-.717 1.474-.952C7.255 2.937 9.248 1.98 11.978 1.98c2.731 0 4.767.957 6.166 2.093.584.235 1.077.546 1.474.952.85.869 1.132 2.037 1.132 3.368 0 .368-.014.733-.052 1.086.23.462.477 1.088.644 1.517 1.258.364 2.233 1.721 2.605 2.656a.841.841 0 0 1 .053.22v2.869a.641.641 0 0 1-.078.256Zm-11.75-5.992h-.344a4.359 4.359 0 0 1-.355.508c-.77.947-1.918 1.492-3.508 1.492-1.725 0-2.989-.359-3.782-1.259a2.137 2.137 0 0 1-.085-.104L4 11.746v6.585c1.435.779 4.514 2.179 8 2.179 3.486 0 6.565-1.4 8-2.179v-6.585l-.098-.104s-.033.045-.085.104c-.793.9-2.057 1.259-3.782 1.259-1.59 0-2.738-.545-3.508-1.492a4.359 4.359 0 0 1-.355-.508Zm2.328 3.25c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Zm-5 0c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Zm3.313-6.185c.136 1.057.403 1.913.878 2.497.442.544 1.134.938 2.344.938 1.573 0 2.292-.337 2.657-.751.384-.435.558-1.15.558-2.361 0-1.14-.243-1.847-.705-2.319-.477-.488-1.319-.862-2.824-1.025-1.487-.161-2.192.138-2.533.529-.269.307-.437.808-.438 1.578v.021c0 .265.021.562.063.893Zm-1.626 0c.042-.331.063-.628.063-.894v-.02c-.001-.77-.169-1.271-.438-1.578-.341-.391-1.046-.69-2.533-.529-1.505.163-2.347.537-2.824 1.025-.462.472-.705 1.179-.705 2.319 0 1.211.175 1.926.558 2.361.365.414 1.084.751 2.657.751 1.21 0 1.902-.394 2.344-.938.475-.584.742-1.44.878-2.497Z"
+                  />
+                </svg>
+              </button>
+              <button
+                role="tab"
+                data-tab="droid"
+                data-name="Factory Droid"
+                aria-selected="false"
+                aria-label="Factory Droid"
+                title="Factory Droid"
+                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
+              >
+                <svg class="h-[18px] w-[18px]" viewBox="140 140 620 620" fill="currentColor" aria-hidden="true">
+                  <path
+                    d="M582.594 251.356C581.452 251.073 580.385 250.547 579.466 249.813C578.546 249.08 577.795 248.156 577.266 247.106C576.736 246.055 576.44 244.903 576.397 243.728C576.354 242.552 576.565 241.381 577.017 240.295C592.606 202.357 599.485 172.002 588.384 159.294C558.984 125.58 441.083 192.624 403.49 215.331C402.484 215.936 401.358 216.316 400.19 216.446C399.023 216.577 397.841 216.454 396.725 216.086C395.61 215.718 394.587 215.113 393.727 214.314C392.866 213.515 392.188 212.539 391.739 211.453C375.937 173.596 359.325 147.264 342.487 146.122C297.857 143.068 261.885 273.85 251.355 316.475C251.074 317.616 250.55 318.683 249.817 319.603C249.085 320.522 248.162 321.273 247.113 321.803C246.064 322.332 244.912 322.629 243.738 322.672C242.563 322.715 241.393 322.504 240.308 322.052C202.37 306.463 172.002 299.584 159.307 310.685C125.593 340.085 192.624 457.987 215.33 495.579C215.938 496.585 216.32 497.711 216.451 498.879C216.583 500.047 216.46 501.229 216.092 502.346C215.724 503.462 215.119 504.485 214.318 505.346C213.517 506.206 212.54 506.883 211.453 507.33C173.609 523.132 147.277 539.744 146.121 556.581C143.08 601.211 273.85 637.184 316.488 647.714C317.627 647.998 318.691 648.525 319.608 649.259C320.525 649.992 321.273 650.914 321.801 651.963C322.329 653.011 322.624 654.161 322.668 655.335C322.711 656.508 322.501 657.677 322.052 658.761C306.463 696.699 299.584 727.067 310.685 739.762C340.084 773.476 458 706.445 495.592 683.739C496.598 683.131 497.724 682.749 498.892 682.618C500.06 682.486 501.243 682.609 502.359 682.977C503.475 683.345 504.498 683.95 505.358 684.751C506.219 685.552 506.896 686.529 507.344 687.616C523.145 725.46 539.744 751.792 556.594 752.948C601.224 755.989 637.196 625.219 647.713 582.581C647.998 581.441 648.525 580.375 649.259 579.457C649.993 578.539 650.917 577.79 651.967 577.262C653.017 576.733 654.169 576.438 655.344 576.396C656.519 576.354 657.689 576.566 658.775 577.018C696.712 592.607 727.067 599.472 739.775 588.384C773.49 558.985 706.445 441.069 683.738 403.477C683.136 402.47 682.757 401.345 682.628 400.178C682.499 399.011 682.622 397.83 682.99 396.715C683.358 395.6 683.961 394.577 684.76 393.717C685.558 392.856 686.532 392.177 687.616 391.726C725.473 375.924 751.805 359.312 752.947 342.475C756.001 297.845 625.219 261.873 582.594 251.356ZM531.391 208.572C539.969 223.948 495.765 326.408 462.886 398.073C462.337 399.271 461.433 400.273 460.297 400.942C459.161 401.611 457.847 401.917 456.532 401.817C455.217 401.717 453.964 401.217 452.942 400.384C451.92 399.551 451.178 398.424 450.816 397.157C437.537 350.561 422.36 295.813 406.12 249.338C405.482 247.514 405.513 245.522 406.209 243.719C406.905 241.917 408.219 240.42 409.917 239.498C450.471 217.349 519.865 187.936 531.391 208.572ZM337.044 221.253C353.974 226.06 395.165 329.767 422.585 403.69C423.042 404.925 423.111 406.271 422.781 407.546C422.451 408.821 421.739 409.965 420.74 410.824C419.741 411.683 418.503 412.215 417.193 412.35C415.882 412.485 414.562 412.215 413.409 411.577C371.037 388.061 321.627 360.043 277.276 338.664C275.539 337.822 274.157 336.39 273.377 334.625C272.596 332.86 272.468 330.875 273.013 329.023C286.066 284.726 314.297 214.813 337.044 221.253ZM208.585 367.651C223.948 359.073 326.42 403.278 398.073 436.156C399.271 436.706 400.272 437.61 400.942 438.746C401.611 439.882 401.916 441.196 401.816 442.51C401.717 443.825 401.217 445.078 400.383 446.1C399.55 447.122 398.424 447.864 397.156 448.227C350.575 461.506 295.813 476.683 249.337 492.923C247.515 493.557 245.526 493.524 243.727 492.828C241.927 492.133 240.433 490.82 239.511 489.125C217.402 448.572 187.936 379.177 208.585 367.651ZM221.266 561.999C226.06 545.069 329.78 503.878 403.703 476.457C404.938 476 406.284 475.932 407.559 476.262C408.834 476.592 409.978 477.304 410.837 478.303C411.695 479.301 412.228 480.539 412.363 481.85C412.498 483.16 412.228 484.48 411.59 485.633C388.06 528.006 360.042 577.416 338.663 621.754C337.827 623.496 336.398 624.884 334.631 625.668C332.864 626.451 330.876 626.579 329.023 626.029C284.725 613.056 214.813 584.746 221.266 561.999ZM367.664 690.458C359.073 675.094 403.291 572.622 436.169 500.97C436.719 499.772 437.623 498.77 438.759 498.101C439.895 497.431 441.209 497.126 442.523 497.226C443.838 497.326 445.091 497.826 446.113 498.659C447.135 499.492 447.877 500.618 448.24 501.886C461.518 548.468 476.696 603.23 492.936 649.705C493.569 651.529 493.534 653.518 492.836 655.318C492.137 657.118 490.822 658.612 489.125 659.532C448.585 681.641 379.177 711.106 367.704 690.458H367.664ZM562.012 677.777C545.068 672.983 503.877 569.263 476.457 495.34C475.997 494.103 475.927 492.754 476.257 491.477C476.587 490.199 477.301 489.053 478.302 488.193C479.304 487.334 480.545 486.802 481.858 486.669C483.171 486.537 484.493 486.81 485.646 487.452C528.005 510.969 577.429 539 621.767 560.379C623.507 561.217 624.891 562.648 625.672 564.414C626.453 566.181 626.58 568.168 626.029 570.02C612.989 614.384 584.759 684.23 562.012 677.777ZM690.47 531.378C675.094 539.97 572.635 495.751 500.969 462.873C499.771 462.323 498.77 461.42 498.1 460.284C497.431 459.148 497.126 457.834 497.226 456.519C497.325 455.204 497.825 453.952 498.659 452.93C499.492 451.908 500.618 451.165 501.886 450.803C548.481 437.524 603.229 422.346 649.705 406.106C651.531 405.472 653.522 405.508 655.325 406.206C657.127 406.904 658.622 408.219 659.544 409.918C681.64 450.458 711.106 519.866 690.47 531.378ZM677.789 337.03C672.983 353.974 569.275 395.165 495.353 422.586C494.116 423.046 492.767 423.115 491.489 422.785C490.212 422.455 489.066 421.742 488.206 420.74C487.346 419.739 486.815 418.498 486.682 417.185C486.55 415.872 486.823 414.549 487.465 413.396C510.982 371.037 539 321.614 560.379 277.276C561.219 275.537 562.65 274.154 564.416 273.374C566.182 272.593 568.168 272.465 570.019 273.013C614.317 286.053 684.23 314.284 677.789 337.03Z"
+                  />
+                </svg>
+              </button>
+              <button
+                role="tab"
+                data-tab="opencode"
+                data-name="opencode"
+                aria-selected="false"
+                aria-label="opencode"
+                title="opencode"
+                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
+              >
+                <svg class="h-[18px] w-[18px]" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M384 416H128V96H384V416ZM320 160H192V352H320V160Z" />
+                  <path d="M320 224V352H192V224H320Z" />
+                </svg>
+              </button>
+              <button
+                role="tab"
+                data-tab="generic"
+                data-name="Any MCP client"
+                aria-selected="false"
+                aria-label="Other MCP clients"
+                title="Other"
+                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
+              >
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="16 18 22 12 16 6" />
+                  <polyline points="8 6 2 12 8 18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic client heading + panels -->
+          <div class="px-5 pb-6 sm:px-6">
+            <h2 id="client-name" class="font-display text-lg font-semibold tracking-tight text-stone-900">
+              Claude Code
+            </h2>
+
+            <div class="mt-3.5">
+              <div data-panel="claude" class="tab-panel">
+                <p class="mb-3 text-sm leading-relaxed text-stone-600">
+                  Run this in your terminal. Claude will prompt you to authenticate via OAuth the first time you use a
+                  Sevalla tool.
+                </p>
+                <div class="code-block" data-code="claude mcp add --transport http sevalla https://mcp.sevalla.com/mcp">
+                  <pre
+                    class="overflow-x-auto"
+                  ><code><span class="text-stone-500">$</span> claude mcp add --transport http <span class="text-orange-300">sevalla</span> https://mcp.sevalla.com/mcp</code></pre>
+                </div>
+              </div>
+
+              <div data-panel="cursor" class="tab-panel hidden">
+                <p class="mb-3 text-sm leading-relaxed text-stone-600">
+                  Click the button to install, or add it to
+                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700"
+                    >.cursor/mcp.json</code
+                  >
+                  in your project. Cursor will prompt you to authenticate via OAuth on first use.
+                </p>
+                <a
+                  href="cursor://anysphere.cursor-deeplink/mcp/install?name=sevalla&config=eyJ1cmwiOiJodHRwczovL21jcC5zZXZhbGxhLmNvbS9tY3AifQ=="
+                  class="mb-4 inline-flex items-center gap-2 rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-700"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path
+                      d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23"
+                    />
+                  </svg>
+                  Add to Cursor
+                </a>
+                <div
+                  class="code-block"
+                  data-code='{
+  "mcpServers": {
+    "sevalla": {
+      "url": "https://mcp.sevalla.com/mcp"
+    }
+  }
+}'
+                >
+                  <pre class="overflow-x-auto"><code>{
+  <span class="text-sky-300">"mcpServers"</span>: {
+    <span class="text-sky-300">"sevalla"</span>: {
+      <span class="text-sky-300">"url"</span>: <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span>
+    }
+  }
+}</code></pre>
+                </div>
+              </div>
+
+              <div data-panel="vscode" class="tab-panel hidden">
+                <p class="mb-3 text-sm leading-relaxed text-stone-600">
+                  Click the button to install, or add it to
+                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700"
+                    >.vscode/mcp.json</code
+                  >
+                  in your workspace. VS Code will prompt you to authenticate via OAuth on first use.
+                </p>
+                <a
+                  href="vscode:mcp/install?%7B%22name%22%3A%22sevalla%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.sevalla.com%2Fmcp%22%7D"
+                  class="mb-4 inline-flex items-center gap-2 rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-700"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path
+                      d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"
+                    />
+                  </svg>
+                  Add to VS Code
+                </a>
+                <div
+                  class="code-block"
+                  data-code='{
+  "servers": {
+    "sevalla": {
+      "type": "http",
+      "url": "https://mcp.sevalla.com/mcp"
+    }
+  }
+}'
+                >
+                  <pre class="overflow-x-auto"><code>{
+  <span class="text-sky-300">"servers"</span>: {
+    <span class="text-sky-300">"sevalla"</span>: {
+      <span class="text-sky-300">"type"</span>: <span class="text-orange-300">"http"</span>,
+      <span class="text-sky-300">"url"</span>: <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span>
+    }
+  }
+}</code></pre>
+                </div>
+              </div>
+
+              <div data-panel="codex" class="tab-panel hidden">
+                <p class="mb-3 text-sm leading-relaxed text-stone-600">
+                  Run this in your terminal, or add the block below to
+                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700"
+                    >~/.codex/config.toml</code
+                  >. Codex prompts you to authenticate via OAuth on first use.
+                </p>
+                <div class="code-block" data-code="codex mcp add sevalla --url https://mcp.sevalla.com/mcp">
+                  <pre
+                    class="overflow-x-auto"
+                  ><code><span class="text-stone-500">$</span> codex mcp add <span class="text-orange-300">sevalla</span> --url https://mcp.sevalla.com/mcp</code></pre>
+                </div>
+                <div
+                  class="code-block mt-3"
+                  data-code='[mcp_servers.sevalla]
+url = "https://mcp.sevalla.com/mcp"'
+                >
+                  <pre class="overflow-x-auto"><code>[<span class="text-sky-300">mcp_servers.sevalla</span>]
+<span class="text-sky-300">url</span> = <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span></code></pre>
+                </div>
+              </div>
+
+              <div data-panel="copilot" class="tab-panel hidden">
+                <p class="mb-3 text-sm leading-relaxed text-stone-600">
+                  Add to your MCP configuration for the Copilot coding agent (repository
+                  <span class="font-semibold">Settings → Copilot → Coding agent</span>).
+                </p>
+                <div
+                  class="code-block"
+                  data-code='{
+  "mcpServers": {
+    "sevalla": {
+      "type": "http",
+      "url": "https://mcp.sevalla.com/mcp",
+      "tools": ["*"]
+    }
+  }
+}'
+                >
+                  <pre class="overflow-x-auto"><code>{
+  <span class="text-sky-300">"mcpServers"</span>: {
+    <span class="text-sky-300">"sevalla"</span>: {
+      <span class="text-sky-300">"type"</span>: <span class="text-orange-300">"http"</span>,
+      <span class="text-sky-300">"url"</span>: <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span>,
+      <span class="text-sky-300">"tools"</span>: [<span class="text-orange-300">"*"</span>]
+    }
+  }
+}</code></pre>
+                </div>
+              </div>
+
+              <div data-panel="droid" class="tab-panel hidden">
+                <p class="mb-3 text-sm leading-relaxed text-stone-600">
+                  Run this in your terminal. Then run
+                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700">/mcp</code> in Droid
+                  to complete the OAuth flow.
+                </p>
+                <div class="code-block" data-code="droid mcp add sevalla https://mcp.sevalla.com/mcp --type http">
+                  <pre
+                    class="overflow-x-auto"
+                  ><code><span class="text-stone-500">$</span> droid mcp add <span class="text-orange-300">sevalla</span> https://mcp.sevalla.com/mcp --type http</code></pre>
+                </div>
+              </div>
+
+              <div data-panel="opencode" class="tab-panel hidden">
+                <p class="mb-3 text-sm leading-relaxed text-stone-600">
+                  Add to
+                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700">opencode.json</code>
+                  in your project or
+                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700"
+                    >~/.config/opencode/</code
+                  >.
+                </p>
+                <div
+                  class="code-block"
+                  data-code='{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "sevalla": {
+      "type": "remote",
+      "url": "https://mcp.sevalla.com/mcp",
+      "enabled": true
+    }
+  }
+}'
+                >
+                  <pre class="overflow-x-auto"><code>{
+  <span class="text-sky-300">"$schema"</span>: <span class="text-orange-300">"https://opencode.ai/config.json"</span>,
+  <span class="text-sky-300">"mcp"</span>: {
+    <span class="text-sky-300">"sevalla"</span>: {
+      <span class="text-sky-300">"type"</span>: <span class="text-orange-300">"remote"</span>,
+      <span class="text-sky-300">"url"</span>: <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span>,
+      <span class="text-sky-300">"enabled"</span>: <span class="text-orange-300">true</span>
+    }
+  }
+}</code></pre>
+                </div>
+              </div>
+
+              <div data-panel="generic" class="tab-panel hidden">
+                <p class="mb-3 text-sm leading-relaxed text-stone-600">
+                  Most MCP clients use this shape. Point any streamable-HTTP client at the endpoint — it authenticates
+                  over OAuth on first use.
+                </p>
+                <div
+                  class="code-block"
+                  data-code='{
+  "mcpServers": {
+    "sevalla": {
+      "url": "https://mcp.sevalla.com/mcp"
+    }
+  }
+}'
+                >
+                  <pre class="overflow-x-auto"><code>{
+  <span class="text-sky-300">"mcpServers"</span>: {
+    <span class="text-sky-300">"sevalla"</span>: {
+      <span class="text-sky-300">"url"</span>: <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span>
+    }
+  }
+}</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Toast -->
+    <div
+      id="toast"
+      class="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 translate-y-4 rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white opacity-0 shadow-xl transition-all duration-300"
+    >
+      Copied
+    </div>
+
+    <script>
+      const showToast = () => {
+        const t = document.getElementById('toast')
+        t.classList.remove('opacity-0', 'translate-y-4')
+        t.classList.add('opacity-100', 'translate-y-0')
+        setTimeout(() => {
+          t.classList.add('opacity-0', 'translate-y-4')
+          t.classList.remove('opacity-100', 'translate-y-0')
+        }, 1600)
+      }
+
+      const copy = async (text) => {
+        try {
+          await navigator.clipboard.writeText(text)
+          showToast()
+        } catch {
+          /* clipboard unavailable */
+        }
+      }
+
+      const copyIcon =
+        '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>'
+      const checkIcon =
+        '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>'
+
+      // Shared ripple effect, emanating from the click point
+      const spawnRipple = (el, x, y) => {
+        const rect = el.getBoundingClientRect()
+        const size = Math.max(rect.width, rect.height)
+        const ripple = document.createElement('span')
+        ripple.className = 'ripple'
+        ripple.style.width = ripple.style.height = `${size}px`
+        ripple.style.left = `${x - rect.left - size / 2}px`
+        ripple.style.top = `${y - rect.top - size / 2}px`
+        el.appendChild(ripple)
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            ripple.style.transform = 'scale(1)'
+            ripple.style.opacity = '0'
+          }),
+        )
+        setTimeout(() => ripple.remove(), 850)
+      }
+
+      // Endpoint button: whole-box click → copy + ripple + check swap
+      document.querySelectorAll('.copyable[data-copy]').forEach((btn) => {
+        const target = btn.querySelector('.copy-target')
+        const original = target ? target.innerHTML : ''
+        let t
+        btn.addEventListener('click', (e) => {
+          copy(btn.dataset.copy)
+          spawnRipple(btn, e.clientX, e.clientY)
+          btn.classList.add('copied')
+          if (target) target.innerHTML = checkIcon
+          clearTimeout(t)
+          t = setTimeout(() => {
+            btn.classList.remove('copied')
+            if (target) target.innerHTML = original
+          }, 1300)
+        })
+      })
+
+      // Code blocks: whole-box click to copy + ripple
+      document.querySelectorAll('.code-block').forEach((block) => {
+        block.setAttribute('role', 'button')
+        block.setAttribute('tabindex', '0')
+        block.setAttribute('aria-label', 'Copy to clipboard')
+
+        const icon = document.createElement('span')
+        icon.className = 'copy-btn pointer-events-none absolute right-3 top-[17px] text-stone-400'
+        icon.innerHTML = copyIcon
+        block.appendChild(icon)
+
+        let resetTimer
+        const trigger = (x, y) => {
+          copy(block.dataset.code)
+          spawnRipple(block, x, y)
+          block.classList.add('copied')
+          icon.innerHTML = checkIcon
+          clearTimeout(resetTimer)
+          resetTimer = setTimeout(() => {
+            block.classList.remove('copied')
+            icon.innerHTML = copyIcon
+          }, 1300)
+        }
+
+        block.addEventListener('click', (e) => trigger(e.clientX, e.clientY))
+        block.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            const rect = block.getBoundingClientRect()
+            trigger(rect.left + rect.width / 2, rect.top + rect.height / 2)
+          }
+        })
+      })
+
+      // Segmented control: tabs + sliding indicator + dynamic heading
+      const tabs = [...document.querySelectorAll('.seg-btn')]
+      const panels = [...document.querySelectorAll('.tab-panel')]
+      const slider = document.querySelector('.seg-slider')
+      const clientName = document.getElementById('client-name')
+
+      const moveSlider = (btn) => {
+        slider.style.width = `${btn.offsetWidth}px`
+        slider.style.transform = `translateX(${btn.offsetLeft}px)`
+      }
+
+      const selectTab = (btn) => {
+        tabs.forEach((t) => t.setAttribute('aria-selected', String(t === btn)))
+        panels.forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== btn.dataset.tab))
+        clientName.textContent = btn.dataset.name
+        moveSlider(btn)
+      }
+
+      tabs.forEach((tab) => tab.addEventListener('click', () => selectTab(tab)))
+
+      const active = () => document.querySelector('.seg-btn[aria-selected="true"]')
+      const sync = () => moveSlider(active())
+      requestAnimationFrame(() => requestAnimationFrame(sync))
+      window.addEventListener('load', sync)
+      window.addEventListener('resize', sync)
+    </script>
+  </body>
+</html>
