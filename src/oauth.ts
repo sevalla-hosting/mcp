@@ -72,6 +72,19 @@ export const decrypt = (data: string): string => {
 
 const getPublicUrl = () => process.env.PUBLIC_URL || 'https://mcp.sevalla.com'
 
+export const getProtectedResourceUrl = () => `${getPublicUrl()}/.well-known/oauth-protected-resource`
+
+export const getBearerAuthChallenge = () => `Bearer resource_metadata="${getProtectedResourceUrl()}"`
+
+const getProtectedResourceMetadata = () => {
+  const url = getPublicUrl()
+  return {
+    resource: `${url}/mcp`,
+    authorization_servers: [url],
+    scopes_supported: ['mcp:tools'],
+  }
+}
+
 export const decryptClientId = (clientId: string): { redirect_uris: string[] } => {
   const parsed = JSON.parse(decrypt(clientId))
   if (parsed.type !== 'registration' || !Array.isArray(parsed.redirect_uris)) {
@@ -92,14 +105,9 @@ export const validateRedirectUri = (uri: string): boolean => {
 export const createOAuthRouter = () => {
   const router = new Hono()
 
-  router.get('/.well-known/oauth-protected-resource', (c) => {
-    const url = getPublicUrl()
-    return c.json({
-      resource: `${url}/mcp`,
-      authorization_servers: [url],
-      scopes_supported: ['mcp:tools'],
-    })
-  })
+  router.get('/.well-known/oauth-protected-resource', (c) => c.json(getProtectedResourceMetadata()))
+
+  router.get('/.well-known/oauth-protected-resource/mcp', (c) => c.json(getProtectedResourceMetadata()))
 
   router.get('/.well-known/oauth-authorization-server', (c) => {
     const url = getPublicUrl()

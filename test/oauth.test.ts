@@ -10,6 +10,7 @@ import {
   decrypt,
   decryptClientId,
   validateRedirectUri,
+  getBearerAuthChallenge,
   createOAuthRouter,
 } from '../src/oauth.ts'
 
@@ -134,6 +135,25 @@ describe('well-known endpoints', () => {
     const body = await res.json()
     strictEqual(body.resource, 'https://mcp.test.com/mcp')
     strictEqual(body.authorization_servers[0], 'https://mcp.test.com')
+    delete process.env.PUBLIC_URL
+  })
+
+  it('GET /.well-known/oauth-protected-resource/mcp returns path-based resource metadata', async () => {
+    process.env.PUBLIC_URL = 'https://mcp.test.com'
+    const res = await app.request('/.well-known/oauth-protected-resource/mcp')
+    strictEqual(res.status, 200)
+    const body = await res.json()
+    strictEqual(body.resource, 'https://mcp.test.com/mcp')
+    strictEqual(body.authorization_servers[0], 'https://mcp.test.com')
+    delete process.env.PUBLIC_URL
+  })
+
+  it('builds the bearer auth challenge for OAuth discovery', () => {
+    process.env.PUBLIC_URL = 'https://mcp.test.com'
+    strictEqual(
+      getBearerAuthChallenge(),
+      'Bearer resource_metadata="https://mcp.test.com/.well-known/oauth-protected-resource"',
+    )
     delete process.env.PUBLIC_URL
   })
 

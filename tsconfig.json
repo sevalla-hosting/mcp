@@ -5,6 +5,7 @@
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "types": ["node"],
     "skipLibCheck": true,
     "allowImportingTsExtensions": true
   },
