@@ -85,6 +85,20 @@ const getProtectedResourceMetadata = () => {
   }
 }
 
+const getAuthorizationServerMetadata = () => {
+  const url = getPublicUrl()
+  return {
+    issuer: url,
+    authorization_endpoint: `${url}/oauth/authorize`,
+    token_endpoint: `${url}/oauth/token`,
+    registration_endpoint: `${url}/oauth/register`,
+    response_types_supported: ['code'],
+    grant_types_supported: ['authorization_code'],
+    token_endpoint_auth_methods_supported: ['none'],
+    code_challenge_methods_supported: ['S256'],
+  }
+}
+
 export const decryptClientId = (clientId: string): { redirect_uris: string[] } => {
   const parsed = JSON.parse(decrypt(clientId))
   if (parsed.type !== 'registration' || !Array.isArray(parsed.redirect_uris)) {
@@ -106,22 +120,12 @@ export const createOAuthRouter = () => {
   const router = new Hono()
 
   router.get('/.well-known/oauth-protected-resource', (c) => c.json(getProtectedResourceMetadata()))
-
   router.get('/.well-known/oauth-protected-resource/mcp', (c) => c.json(getProtectedResourceMetadata()))
+  router.get('/mcp/.well-known/oauth-protected-resource', (c) => c.json(getProtectedResourceMetadata()))
 
-  router.get('/.well-known/oauth-authorization-server', (c) => {
-    const url = getPublicUrl()
-    return c.json({
-      issuer: url,
-      authorization_endpoint: `${url}/oauth/authorize`,
-      token_endpoint: `${url}/oauth/token`,
-      registration_endpoint: `${url}/oauth/register`,
-      response_types_supported: ['code'],
-      grant_types_supported: ['authorization_code'],
-      token_endpoint_auth_methods_supported: ['none'],
-      code_challenge_methods_supported: ['S256'],
-    })
-  })
+  router.get('/.well-known/oauth-authorization-server', (c) => c.json(getAuthorizationServerMetadata()))
+  router.get('/.well-known/oauth-authorization-server/mcp', (c) => c.json(getAuthorizationServerMetadata()))
+  router.get('/mcp/.well-known/oauth-authorization-server', (c) => c.json(getAuthorizationServerMetadata()))
 
   router.post('/oauth/register', async (c) => {
     const body = await c.req.json()
