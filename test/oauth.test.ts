@@ -170,6 +170,27 @@ describe('well-known endpoints', () => {
     strictEqual(body.code_challenge_methods_supported[0], 'S256')
     delete process.env.PUBLIC_URL
   })
+
+  it('serves AS metadata at path-based locations for rmcp-style discovery', async () => {
+    process.env.PUBLIC_URL = 'https://mcp.test.com'
+    for (const path of ['/.well-known/oauth-authorization-server/mcp', '/mcp/.well-known/oauth-authorization-server']) {
+      const res = await app.request(path)
+      strictEqual(res.status, 200, path)
+      const body = await res.json()
+      strictEqual(body.issuer, 'https://mcp.test.com', path)
+      strictEqual(body.authorization_endpoint, 'https://mcp.test.com/oauth/authorize', path)
+    }
+    delete process.env.PUBLIC_URL
+  })
+
+  it('serves protected-resource metadata at the path-prefixed location', async () => {
+    process.env.PUBLIC_URL = 'https://mcp.test.com'
+    const res = await app.request('/mcp/.well-known/oauth-protected-resource')
+    strictEqual(res.status, 200)
+    const body = await res.json()
+    strictEqual(body.resource, 'https://mcp.test.com/mcp')
+    delete process.env.PUBLIC_URL
+  })
 })
 
 describe('POST /oauth/register', () => {
