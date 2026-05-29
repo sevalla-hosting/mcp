@@ -6,7 +6,7 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { cors } from 'hono/cors'
 import { createAuthenticatedFetch, SEVALLA_API_BASE, SEVALLA_SPEC_URL } from './api.ts'
-import { createOAuthRouter } from './oauth.ts'
+import { createOAuthRouter, getBearerAuthChallenge } from './oauth.ts'
 import { INDEX_HTML } from './html.ts'
 import { createTools } from './sandbox/index.ts'
 
@@ -97,7 +97,11 @@ app.get('/health', (c) => {
 
 app.route('', createOAuthRouter())
 
-app.get('/mcp', (c) => c.body(null, { status: 405, headers: { Allow: 'POST' } }))
+app.get('/mcp', (c) =>
+  c.json({ error: 'Missing or invalid Authorization header' }, 401, {
+    'WWW-Authenticate': getBearerAuthChallenge(),
+  }),
+)
 app.delete('/mcp', (c) => c.body(null, { status: 405, headers: { Allow: 'POST' } }))
 
 app.post('/mcp', async (c) => {
@@ -107,17 +111,15 @@ app.post('/mcp', async (c) => {
 
   const authHeader = c.req.header('authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    const publicUrl = process.env.PUBLIC_URL || 'https://mcp.sevalla.com'
     return c.json({ error: 'Missing or invalid Authorization header' }, 401, {
-      'WWW-Authenticate': `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
+      'WWW-Authenticate': getBearerAuthChallenge(),
     })
   }
 
   const token = authHeader.slice(7).trim()
   if (!token) {
-    const publicUrl = process.env.PUBLIC_URL || 'https://mcp.sevalla.com'
     return c.json({ error: 'Empty token' }, 401, {
-      'WWW-Authenticate': `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
+      'WWW-Authenticate': getBearerAuthChallenge(),
     })
   }
 

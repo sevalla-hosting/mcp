@@ -17,23 +17,26 @@
     "fmt:check": "oxfmt --check"
   },
   "dependencies": {
-    "@hono/mcp": "^0.2.4",
-    "@hono/node-server": "^1.19.13",
-    "@modelcontextprotocol/sdk": "^1.27.1",
-    "hono": "^4.12.12",
-    "isolated-vm": "^6.0.2",
-    "zod": "^4.3.6"
+    "@hono/mcp": "^0.3.0",
+    "@hono/node-server": "^2.0.4",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "hono": "^4.12.23",
+    "isolated-vm": "^6.1.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^25.3.2",
+    "@types/node": "^25.9.1",
     "eslint-plugin-unused-imports": "^4.4.1",
-    "oxfmt": "^0.35.0",
-    "oxlint": "^1.50.0",
-    "typescript": "^5.9.3"
+    "oxfmt": "^0.52.0",
+    "oxlint": "^1.67.0",
+    "typescript": "^6.0.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "isolated-vm"
-    ]
+    ],
+    "overrides": {
+      "ip-address@<=10.1.0": ">=10.1.1"
+    }
   }
 }
