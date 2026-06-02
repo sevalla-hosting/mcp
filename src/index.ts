@@ -20,11 +20,14 @@ if (IS_STDIO) {
 const PORT = parseInt(process.env.PORT || '3000', 10)
 const SHUTDOWN_TIMEOUT_MS = parseInt(process.env.SHUTDOWN_TIMEOUT_MS || '30000', 10)
 
+const SPEC_CACHE_TTL_MS = 10 * 60 * 1000
+
 let specPromise: Promise<Record<string, unknown>> | null = null
+let specFetchedAt = 0
 let isShuttingDown = false
 
 const loadSpec = (): Promise<Record<string, unknown>> => {
-  if (!specPromise) {
+  if (!specPromise || Date.now() - specFetchedAt > SPEC_CACHE_TTL_MS) {
     specPromise = (async () => {
       console.log('Fetching OpenAPI spec from', SEVALLA_SPEC_URL)
       const res = await fetch(SEVALLA_SPEC_URL)
@@ -36,6 +39,7 @@ const loadSpec = (): Promise<Record<string, unknown>> => {
       console.log('OpenAPI spec loaded successfully')
       return spec
     })()
+    specFetchedAt = Date.now()
   }
   return specPromise
 }
