@@ -559,6 +559,12 @@ describe('Integration: /mcp auth + protocol error handling', () => {
     ok(res.headers.get('www-authenticate')?.includes('resource_metadata'))
   })
 
+  it('returns 405 with Allow: POST on GET /mcp with a bearer token', async () => {
+    const res = await app.request('/mcp', { headers: { authorization: 'Bearer svl_x' } })
+    strictEqual(res.status, 405)
+    strictEqual(res.headers.get('allow'), 'POST')
+  })
+
   it('returns 405 with Allow: POST on DELETE /mcp', async () => {
     const res = await app.request('/mcp', { method: 'DELETE' })
     strictEqual(res.status, 405)
