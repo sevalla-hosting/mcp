@@ -103,11 +103,14 @@ app.get('/health', (c) => {
 
 app.route('', createOAuthRouter())
 
-app.get('/mcp', (c) =>
-  c.json({ error: 'Missing or invalid Authorization header' }, 401, {
+app.get('/mcp', (c) => {
+  if (c.req.header('authorization')?.startsWith('Bearer ')) {
+    return c.body(null, { status: 405, headers: { Allow: 'POST' } })
+  }
+  return c.json({ error: 'Missing or invalid Authorization header' }, 401, {
     'WWW-Authenticate': getBearerAuthChallenge(),
-  }),
-)
+  })
+})
 app.delete('/mcp', (c) => c.body(null, { status: 405, headers: { Allow: 'POST' } }))
 
 app.post('/mcp', async (c) => {
