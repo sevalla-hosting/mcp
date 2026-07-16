@@ -43,6 +43,32 @@ export interface BridgeResponse {
   body: any
 }
 
+const describeValue = (value: unknown): string => {
+  if (value === null) {
+    return 'null'
+  }
+  if (Array.isArray(value)) {
+    return 'an array'
+  }
+  return `a ${typeof value}`
+}
+
+const validateRequest = (req: unknown): BridgeRequest => {
+  if (typeof req !== 'object' || req === null || Array.isArray(req)) {
+    throw new Error(
+      `request() expects a single options object like request({ method: "GET", path: "/..." }), got ${describeValue(req)}. Positional arguments are not supported`,
+    )
+  }
+  const { method, path } = req as Partial<BridgeRequest>
+  if (typeof method !== 'string' || method.length === 0) {
+    throw new Error('request() requires options.method to be a non-empty string, e.g. { method: "GET", path: "/..." }')
+  }
+  if (typeof path !== 'string' || path.length === 0) {
+    throw new Error('request() requires options.path to be a non-empty string, e.g. { method: "GET", path: "/..." }')
+  }
+  return req as BridgeRequest
+}
+
 const validatePath = (path: string) => {
   if (path.includes('://')) {
     throw new Error('Invalid path: must not contain "://"')
@@ -112,12 +138,13 @@ export const createRequestBridge = (
   const maxResponseBytes = options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES
   let requestCount = 0
 
-  return async (req: BridgeRequest): Promise<BridgeResponse> => {
+  return async (rawReq: BridgeRequest): Promise<BridgeResponse> => {
     requestCount++
     if (requestCount > maxRequests) {
       throw new Error(`Request limit of ${maxRequests} exceeded`)
     }
 
+    const req = validateRequest(rawReq)
     const method = req.method.toUpperCase()
     if (!ALLOWED_METHODS.has(method)) {
       throw new Error(`Method "${method}" not allowed`)

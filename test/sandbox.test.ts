@@ -162,6 +162,47 @@ describe('createRequestBridge', () => {
     }
   })
 
+  it('rejects positional arguments with an actionable message', async () => {
+    const bridge = createRequestBridge(mockHandler, 'https://api.example.com')
+    try {
+      await bridge('GET' as any)
+      throw new Error('should have thrown')
+    } catch (e: any) {
+      strictEqual(e.message.includes('options object'), true)
+      strictEqual(e.message.includes('Positional arguments'), true)
+    }
+  })
+
+  it('rejects null request', async () => {
+    const bridge = createRequestBridge(mockHandler, 'https://api.example.com')
+    try {
+      await bridge(null as any)
+      throw new Error('should have thrown')
+    } catch (e: any) {
+      strictEqual(e.message.includes('options object'), true)
+    }
+  })
+
+  it('rejects missing method', async () => {
+    const bridge = createRequestBridge(mockHandler, 'https://api.example.com')
+    try {
+      await bridge({ path: '/items' } as any)
+      throw new Error('should have thrown')
+    } catch (e: any) {
+      strictEqual(e.message.includes('options.method'), true)
+    }
+  })
+
+  it('rejects missing path', async () => {
+    const bridge = createRequestBridge(mockHandler, 'https://api.example.com')
+    try {
+      await bridge({ method: 'GET' } as any)
+      throw new Error('should have thrown')
+    } catch (e: any) {
+      strictEqual(e.message.includes('options.path'), true)
+    }
+  })
+
   it('filters blocked headers', async () => {
     const handler = async (_url: string, init?: RequestInit): Promise<Response> => {
       const headers = Object.fromEntries(new Headers(init?.headers).entries())
@@ -210,6 +251,44 @@ describe('executeInSandbox', () => {
     const result = await executeInSandbox('async () => { throw new Error("boom") }', {})
     strictEqual(result.error, 'boom')
     strictEqual(result.result, undefined)
+  })
+
+  it('returns error when a host function throws synchronously', async () => {
+    const result = await executeInSandbox('async () => await api.boom()', {
+      api: {
+        boom: () => {
+          throw new Error('sync boom')
+        },
+      },
+    })
+    strictEqual(result.error, 'sync boom')
+    strictEqual(result.result, undefined)
+  })
+
+  it('returns error when a host function rejects asynchronously', async () => {
+    const result = await executeInSandbox('async () => await api.boom()', {
+      api: {
+        boom: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 1))
+          throw new Error('async boom')
+        },
+      },
+    })
+    strictEqual(result.error, 'async boom')
+  })
+
+  it('lets sandbox code catch host function errors', async () => {
+    const result = await executeInSandbox(
+      'async () => { try { await api.boom() } catch (e) { return `caught: ${e.message}` } }',
+      {
+        api: {
+          boom: () => {
+            throw new Error('sync boom')
+          },
+        },
+      },
+    )
+    deepStrictEqual(result, { result: 'caught: sync boom' })
   })
 
   it('enforces CPU timeout', async () => {
@@ -303,6 +382,34 @@ describe('createTools', () => {
       code: 'async () => Object.keys(spec.paths)',
     })
     deepStrictEqual(JSON.parse(result.content[0].text), ['/items', '/users'])
+  })
+
+  it('execute tool returns a tool error for positional request arguments instead of crashing', async () => {
+    const tools = createTools({
+      spec: mockSpec,
+      request: async () => new Response('{}'),
+      baseUrl: 'https://api.example.com',
+      namespace: 'myapi',
+    })
+    const result = await tools.definitions[1].handler({
+      code: `async () => myapi.request('GET', '/items')`,
+    })
+    strictEqual(result.isError, true)
+    strictEqual(result.content[0].text.includes('options object'), true)
+  })
+
+  it('execute tool returns a tool error for invalid method instead of crashing', async () => {
+    const tools = createTools({
+      spec: mockSpec,
+      request: async () => new Response('{}'),
+      baseUrl: 'https://api.example.com',
+      namespace: 'myapi',
+    })
+    const result = await tools.definitions[1].handler({
+      code: `async () => myapi.request({ method: 'TRACE', path: '/items' })`,
+    })
+    strictEqual(result.isError, true)
+    strictEqual(result.content[0].text.includes('not allowed'), true)
   })
 
   it('inputSchema is a Zod schema with code property', () => {
