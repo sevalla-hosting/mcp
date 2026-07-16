@@ -157,6 +157,10 @@ app.post('/mcp', async (c) => {
 })
 
 const startServer = async () => {
+  process.on('unhandledRejection', (err) => {
+    console.error('Unhandled rejection:', err)
+  })
+
   if (IS_STDIO) {
     const spec = await loadSpec()
     const token = process.env.SEVALLA_API_KEY || ''

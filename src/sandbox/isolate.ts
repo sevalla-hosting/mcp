@@ -17,6 +17,22 @@ const isNamespaceWithMethods = (value: unknown): value is Record<string, unknown
   !Array.isArray(value) &&
   Object.values(value).some((v) => typeof v === 'function')
 
+const wrapHostFunction = (fn: (..._args: any[]) => any) => {
+  return async (...args: any[]) => {
+    try {
+      return { ok: true, value: await fn(...args) }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  }
+}
+
+const HOST_CALL_UNWRAP =
+  `.then((res) => {` +
+  ` if (res && res.ok) { return res.value }` +
+  ` throw new Error(res && res.error ? String(res.error) : 'Host function failed');` +
+  ` })`
+
 export const executeInSandbox = async (
   code: string,
   globals: Record<string, any>,
@@ -40,10 +56,10 @@ export const executeInSandbox = async (
     for (const [name, value] of Object.entries(globals)) {
       if (typeof value === 'function') {
         const refName = `__ref${refCounter++}`
-        await jail.set(refName, new ivm.Reference(value))
+        await jail.set(refName, new ivm.Reference(wrapHostFunction(value)))
         await context.eval(
           `globalThis[${JSON.stringify(name)}] = function(...args) {` +
-            `return ${refName}.apply(undefined, args, { arguments: { copy: true }, result: { promise: true, copy: true } });` +
+            `return ${refName}.apply(undefined, args, { arguments: { copy: true }, result: { promise: true, copy: true } })${HOST_CALL_UNWRAP};` +
             `};`,
         )
       } else if (isNamespaceWithMethods(value)) {
@@ -53,10 +69,10 @@ export const executeInSandbox = async (
         for (const [key, val] of Object.entries(value)) {
           if (typeof val === 'function') {
             const refName = `__ref${refCounter++}`
-            await jail.set(refName, new ivm.Reference(val))
+            await jail.set(refName, new ivm.Reference(wrapHostFunction(val as (..._args: any[]) => any)))
             methodSetup.push(
               `globalThis[${JSON.stringify(name)}][${JSON.stringify(key)}] = function(...args) {` +
-                `return ${refName}.apply(undefined, args, { arguments: { copy: true }, result: { promise: true, copy: true } });` +
+                `return ${refName}.apply(undefined, args, { arguments: { copy: true }, result: { promise: true, copy: true } })${HOST_CALL_UNWRAP};` +
                 `};`,
             )
           }
