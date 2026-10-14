@@ -1,17 +1,11 @@
-FROM node:24-alpine AS builder
-
-RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
-RUN apk add --no-cache python3 make g++
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
-RUN pnpm prune --prod
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
+RUN npm install --global "$(node -p "require('./package.json').packageManager")" && pnpm install --frozen-lockfile --prod
 
-FROM node:24-alpine
-
-RUN apk add --no-cache libstdc++
+FROM node:26-alpine
 
 WORKDIR /app
 

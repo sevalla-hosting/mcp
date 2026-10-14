@@ -1,43 +1,42 @@
 {
   "name": "sevalla-mcp",
-  "packageManager": "pnpm@10.30.3",
-  "version": "1.0.0",
+  "packageManager": "pnpm@12.11.2",
+  "version": "2.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "volta": {
-    "node": "24.14.0",
-    "pnpm": "10.30.3"
+    "node": "26.11.1",
+    "pnpm": "12.11.2"
   },
   "scripts": {
     "dev": "node --watch src/index.ts",
     "start": "node src/index.ts",
-    "test": "node --test test/**/*.test.ts",
-    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include='src/**' test/**/*.test.ts",
+    "test": "node --test 'test/**/*.test.ts' && MCP_TEST_ERA=legacy node --test 'test/e2e/*.test.ts'",
+    "test:unit": "node --test 'test/*.test.ts'",
+    "test:e2e": "node --test 'test/e2e/*.test.ts' && MCP_TEST_ERA=legacy node --test 'test/e2e/*.test.ts'",
+    "test:live": "node --test 'test/live/*.live.ts'",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include='src/**' 'test/**/*.test.ts'",
+    "sync:operations": "node scripts/sync-operations.ts",
+    "check:operations": "node scripts/sync-operations.ts --check",
     "check:code": "tsc --noEmit --skipLibCheck && oxlint && oxfmt --check",
     "lint": "oxlint",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check"
   },
   "dependencies": {
-    "@hono/mcp": "^0.3.0",
-    "@hono/node-server": "^2.0.11",
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "hono": "^4.12.34",
-    "isolated-vm": "^6.1.2",
-    "zod": "^4.4.3"
+    "@hono/node-server": "^2.1.5",
+    "@modelcontextprotocol/server": "^2.3.1",
+    "hono": "^4.13.13",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
+    "@modelcontextprotocol/client": "^2.3.1",
+    "@types/node": "^26.6.5",
     "eslint-plugin-unused-imports": "^4.4.1",
-    "oxfmt": "^0.52.0",
-    "oxlint": "^1.67.0",
-    "typescript": "^6.0.3"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "isolated-vm"
-    ],
-    "overrides": {
-      "ip-address@<=10.1.0": ">=10.1.1"
-    }
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.88.0",
+    "typescript": "^7.0.2"
   }
 }

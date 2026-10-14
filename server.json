@@ -2,12 +2,25 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.sevalla-hosting/mcp",
   "title": "Sevalla",
-  "description": "Official Sevalla MCP — full PaaS API access through just 2 tools.",
+  "description": "Official Sevalla MCP: deploy, debug and manage apps, static sites and databases.",
   "repository": {
     "url": "https://github.com/sevalla-hosting/mcp",
     "source": "github"
   },
-  "version": "1.0.0",
+  "websiteUrl": "https://sevalla.com",
+  "icons": [
+    {
+      "src": "https://mcp.sevalla.com/icon.png",
+      "mimeType": "image/png",
+      "sizes": ["256x256"]
+    },
+    {
+      "src": "https://mcp.sevalla.com/icon.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    }
+  ],
+  "version": "2.0.0",
   "remotes": [
     {
       "type": "streamable-http",

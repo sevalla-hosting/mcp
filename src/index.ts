@@ -1,16 +1,24 @@
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { serve } from '@hono/node-server'
-import { StreamableHTTPTransport } from '@hono/mcp'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { Hono } from 'hono'
-import { HTTPException } from 'hono/http-exception'
+import {
+  createMcpHandler,
+  isLegacyRequest,
+  McpServer,
+  WebStandardStreamableHTTPServerTransport,
+  type AuthInfo,
+  type CacheHint,
+} from '@modelcontextprotocol/server'
+import { serveStdio } from '@modelcontextprotocol/server/stdio'
+import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
-import { createAuthenticatedFetch, SEVALLA_API_BASE, SEVALLA_SPEC_URL } from './api.ts'
-import { createOAuthRouter, getBearerAuthChallenge } from './oauth.ts'
-import { createTools } from './sandbox/index.ts'
+import { createOAuthRouter, getBearerAuthChallenge, getPublicUrl, resolveBearerToken } from './oauth.ts'
+import { ApiError, createSevallaClient } from './sevalla/client.ts'
+import { registerTools, serverInstructions } from './tools/index.ts'
 
 const INDEX_HTML = readFileSync(new URL('./index.html', import.meta.url), 'utf8')
+const ICON_PNG = readFileSync(new URL('./assets/sevalla-256.png', import.meta.url))
+const ICON_SVG = readFileSync(new URL('./assets/sevalla.svg', import.meta.url), 'utf8')
 
 const IS_STDIO = process.argv.includes('--stdio')
 if (IS_STDIO) {
@@ -19,58 +27,104 @@ if (IS_STDIO) {
 
 const PORT = parseInt(process.env.PORT || '3000', 10)
 const SHUTDOWN_TIMEOUT_MS = parseInt(process.env.SHUTDOWN_TIMEOUT_MS || '30000', 10)
+const VALID_TOKEN_TTL_MS = 60_000
+const INVALID_TOKEN_TTL_MS = 15_000
+const TOKEN_CACHE_MAX = 10_000
+const MAX_REQUEST_BODY_BYTES = 1_048_576
+const MAX_TOOL_INPUT_ELEMENTS = 10_000
+const LIST_CACHE_HINT: CacheHint = { ttlMs: 3_600_000, cacheScope: 'public' }
 
-const SPEC_CACHE_TTL_MS = 10 * 60 * 1000
+export const SERVER_VERSION = '2.0.0'
 
-let specPromise: Promise<Record<string, unknown>> | null = null
-let specFetchedAt = 0
 let isShuttingDown = false
 
-const loadSpec = (): Promise<Record<string, unknown>> => {
-  if (!specPromise || Date.now() - specFetchedAt > SPEC_CACHE_TTL_MS) {
-    specPromise = (async () => {
-      console.log('Fetching OpenAPI spec from', SEVALLA_SPEC_URL)
-      const res = await fetch(SEVALLA_SPEC_URL)
-      if (!res.ok) {
-        specPromise = null
-        throw new Error(`Failed to fetch OpenAPI spec: ${res.status} ${res.statusText}`)
-      }
-      const spec = (await res.json()) as Record<string, unknown>
-      console.log('OpenAPI spec loaded successfully')
-      return spec
-    })()
-    specFetchedAt = Date.now()
+const tokenCache = new Map<string, { valid: boolean; expiresAt: number }>()
+
+const cacheToken = (key: string, valid: boolean) => {
+  if (tokenCache.size >= TOKEN_CACHE_MAX) {
+    const oldest = tokenCache.keys().next().value
+    if (oldest !== undefined) {
+      tokenCache.delete(oldest)
+    }
   }
-  return specPromise
+  tokenCache.set(key, { valid, expiresAt: Date.now() + (valid ? VALID_TOKEN_TTL_MS : INVALID_TOKEN_TTL_MS) })
 }
 
-const createMcpServer = (spec: Record<string, unknown>, token: string): McpServer => {
-  const tools = createTools({
-    spec,
-    request: createAuthenticatedFetch(token),
-    baseUrl: SEVALLA_API_BASE,
-    namespace: 'sevalla',
-  })
-
-  const server = new McpServer({
-    name: 'sevalla',
-    version: '1.0.0',
-  })
-
-  for (const tool of tools.definitions) {
-    server.registerTool(
-      tool.name,
-      {
-        title: tool.title,
-        description: tool.description,
-        annotations: tool.annotations,
-        inputSchema: tool.inputSchema,
-      },
-      async (args: Record<string, unknown>) => tool.handler(args as { code: string }),
-    )
+export const validateToken = async (token: string): Promise<'valid' | 'invalid' | 'unknown'> => {
+  const key = createHash('sha256').update(token).digest('hex')
+  const cached = tokenCache.get(key)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.valid ? 'valid' : 'invalid'
   }
+  try {
+    await createSevallaClient({ token, timeoutMs: 10_000 }).get('/api-keys/me')
+    cacheToken(key, true)
+    return 'valid'
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      cacheToken(key, false)
+      return 'invalid'
+    }
+    console.error('Token validation could not be completed:', err instanceof Error ? err.message : err)
+    return 'unknown'
+  }
+}
 
+export const __resetTokenCache = () => tokenCache.clear()
+
+export const serverInfo = () => {
+  const publicUrl = getPublicUrl()
+  return {
+    name: 'sevalla',
+    title: 'Sevalla',
+    version: SERVER_VERSION,
+    description: 'Deploy, monitor and manage applications, static sites and databases on Sevalla.',
+    websiteUrl: 'https://sevalla.com',
+    icons: [
+      { src: `${publicUrl}/icon.png`, mimeType: 'image/png', sizes: ['256x256'] },
+      { src: `${publicUrl}/icon.svg`, mimeType: 'image/svg+xml', sizes: ['any'] },
+    ],
+  }
+}
+
+export const createMcpServer = (token: string): McpServer => {
+  const server = new McpServer(serverInfo(), {
+    capabilities: { tools: { listChanged: false } },
+    instructions: serverInstructions(),
+    cacheHints: { 'tools/list': LIST_CACHE_HINT, 'server/discover': LIST_CACHE_HINT },
+    maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS,
+  })
+  registerTools(server, createSevallaClient({ token }))
   return server
+}
+
+const tokenFrom = (authInfo: AuthInfo | undefined): string => {
+  if (!authInfo?.token) {
+    throw new Error('MCP request reached the server factory without authentication')
+  }
+  return authInfo.token
+}
+
+const modernHandler = createMcpHandler(({ authInfo }) => createMcpServer(tokenFrom(authInfo)), {
+  legacy: 'reject',
+  maxRequestBodySize: MAX_REQUEST_BODY_BYTES,
+  onerror: (err) => console.error('MCP request rejected:', err.message),
+})
+
+const serveLegacyRequest = async (request: Request, authInfo: AuthInfo): Promise<Response> => {
+  const server = createMcpServer(authInfo.token)
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+    enableJsonResponse: true,
+    maxRequestBodySize: MAX_REQUEST_BODY_BYTES,
+  })
+  transport.onerror = (err) => console.error('MCP transport error:', err.message)
+  try {
+    await server.connect(transport)
+    return await transport.handleRequest(request, { authInfo })
+  } finally {
+    await server.close().catch((err: unknown) => console.error('MCP server close error:', err))
+  }
 }
 
 const app = new Hono()
@@ -80,18 +134,43 @@ app.use(
   cors({
     origin: '*',
     allowMethods: ['GET', 'POST', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'mcp-session-id', 'Last-Event-ID', 'mcp-protocol-version'],
-    exposeHeaders: ['mcp-session-id', 'mcp-protocol-version'],
+    allowHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Mcp-Protocol-Version',
+      'Mcp-Method',
+      'Mcp-Name',
+      'Mcp-Session-Id',
+      'Last-Event-ID',
+    ],
+    exposeHeaders: ['Mcp-Protocol-Version', 'Mcp-Session-Id', 'WWW-Authenticate'],
   }),
 )
 
 app.get('/', (c) => c.html(INDEX_HTML))
+
+const ICON_HEADERS = { 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' }
+
+app.get('/icon.png', (c) => c.body(ICON_PNG, 200, { ...ICON_HEADERS, 'content-type': 'image/png' }))
+
+app.get('/icon.svg', (c) =>
+  c.body(ICON_SVG, 200, {
+    ...ICON_HEADERS,
+    'content-type': 'image/svg+xml',
+    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'",
+  }),
+)
 
 app.get('/.well-known/glama.json', (c) => {
   return c.json({
     $schema: 'https://glama.ai/mcp/schemas/connector.json',
     maintainers: [{ email: 'kotapeter@gmail.com' }, { email: 'kristof@sevalla.com' }],
   })
+})
+
+app.get('/.well-known/openai-apps-challenge', (c) => {
+  const challenge = process.env.OPENAI_APPS_CHALLENGE
+  return challenge ? c.text(challenge) : c.notFound()
 })
 
 app.get('/health', (c) => {
@@ -103,14 +182,16 @@ app.get('/health', (c) => {
 
 app.route('', createOAuthRouter())
 
+const unauthorized = (c: Context, message: string, error?: string) =>
+  c.json({ error: message }, 401, { 'WWW-Authenticate': getBearerAuthChallenge('/mcp', error) })
+
 app.get('/mcp', (c) => {
   if (c.req.header('authorization')?.startsWith('Bearer ')) {
     return c.body(null, { status: 405, headers: { Allow: 'POST' } })
   }
-  return c.json({ error: 'Missing or invalid Authorization header' }, 401, {
-    'WWW-Authenticate': getBearerAuthChallenge(),
-  })
+  return unauthorized(c, 'Missing or invalid Authorization header')
 })
+
 app.delete('/mcp', (c) => c.body(null, { status: 405, headers: { Allow: 'POST' } }))
 
 app.post('/mcp', async (c) => {
@@ -120,37 +201,31 @@ app.post('/mcp', async (c) => {
 
   const authHeader = c.req.header('authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    return c.json({ error: 'Missing or invalid Authorization header' }, 401, {
-      'WWW-Authenticate': getBearerAuthChallenge(),
-    })
+    return unauthorized(c, 'Missing or invalid Authorization header')
   }
 
-  const token = authHeader.slice(7).trim()
+  const bearer = authHeader.slice(7).trim()
+  if (!bearer) {
+    return unauthorized(c, 'Empty token')
+  }
+
+  const token = resolveBearerToken(bearer)
   if (!token) {
-    return c.json({ error: 'Empty token' }, 401, {
-      'WWW-Authenticate': getBearerAuthChallenge(),
-    })
+    return unauthorized(c, 'The access token is invalid or was issued for another resource', 'invalid_token')
   }
 
+  if ((await validateToken(token)) === 'invalid') {
+    return unauthorized(c, 'The Sevalla API key is invalid, expired or revoked', 'invalid_token')
+  }
+
+  const authInfo: AuthInfo = { token, clientId: 'sevalla-mcp', scopes: ['mcp:tools'] }
   try {
-    const spec = await loadSpec()
-    const mcpServer = createMcpServer(spec, token)
-    const transport = new StreamableHTTPTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    })
-
-    transport.onerror = (err) => console.error('MCP transport error:', err)
-
-    await mcpServer.connect(transport)
-
-    const response = await transport.handleRequest(c)
-    await mcpServer.close()
-    return response ?? c.json({ error: 'No response from transport' }, 500)
-  } catch (err) {
-    if (err instanceof HTTPException) {
-      throw err
+    const request = c.req.raw
+    if (await isLegacyRequest(request, undefined, { maxRequestBodySize: MAX_REQUEST_BODY_BYTES })) {
+      return await serveLegacyRequest(request, authInfo)
     }
+    return await modernHandler.fetch(request, { authInfo })
+  } catch (err) {
     console.error('MCP request error:', err)
     return c.json({ error: 'Internal server error' }, 500)
   }
@@ -162,16 +237,14 @@ const startServer = async () => {
   })
 
   if (IS_STDIO) {
-    const spec = await loadSpec()
     const token = process.env.SEVALLA_API_KEY || ''
-    const mcpServer = createMcpServer(spec, token)
-    const transport = new StdioServerTransport()
-    await mcpServer.connect(transport)
+    serveStdio(() => createMcpServer(token), {
+      onerror: (err) => console.error('MCP stdio error:', err.message),
+    })
     console.log('Sevalla MCP server running in stdio mode')
     return
   }
 
-  await loadSpec()
   console.log(`Sevalla MCP server starting on port ${PORT}`)
 
   const server = serve({
@@ -204,7 +277,7 @@ const startServer = async () => {
   console.log(`Sevalla MCP server listening on http://localhost:${PORT}`)
 }
 
-export { app, loadSpec, createMcpServer }
+export { app }
 
 export const __setShuttingDown = (value: boolean) => {
   isShuttingDown = value
