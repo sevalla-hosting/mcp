@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ApiError, type SevallaClient } from '../sevalla/client.ts'
+import type { SevallaClient } from '../sevalla/client.ts'
 import {
   API_DOCS_URL,
   checkQuery,
@@ -133,18 +133,6 @@ const query = z
 
 const body = z.record(z.string(), z.unknown()).optional().describe('JSON request body.')
 
-const permissionNeeded = (op: Operation): string | undefined =>
-  op.id === 'execProcessCommandV3'
-    ? 'APP:READ for read-only commands (ls, cat, env, ps, grep) and APP:UPDATE for any other command'
-    : op.permissions?.join(' and ')
-
-const withPermissionHint = (op: Operation, err: unknown): unknown => {
-  const needed = err instanceof ApiError && err.status === 403 ? permissionNeeded(op) : undefined
-  return needed && err instanceof ApiError
-    ? new ApiError(403, `${err.message}. ${op.id} needs ${needed}`, err.code, err.detail)
-    : err
-}
-
 interface OperationArgs {
   operation_id: string
   path_params?: Record<string, string>
@@ -177,15 +165,10 @@ const runOperation = async (cls: OperationClass, args: OperationArgs, api: Pick<
     throw new ToolInputError(`${op.id} requires a request body; sevalla_api_search with operation_id lists its fields.`)
   }
   const path = fillPath(op, args.path_params)
-  let data: unknown
-  try {
-    data = await api.request(op.method, path, {
-      query: checkQuery(op, args.query),
-      body: op.body ? (args.body ?? {}) : undefined,
-    })
-  } catch (err) {
-    throw withPermissionHint(op, err)
-  }
+  const data = await api.request(op.method, path, {
+    query: checkQuery(op, args.query),
+    body: op.body ? (args.body ?? {}) : undefined,
+  })
   return toolResult(data === null ? { ok: true, operation_id: op.id } : redact(data, secretFieldsFor(op)))
 }
 

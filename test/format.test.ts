@@ -54,7 +54,14 @@ describe('small helpers', () => {
 describe('formatApiError', () => {
   it('turns status codes into actionable messages', () => {
     ok(formatApiError(new ApiError(401, 'Unauthorized')).includes('Reconnecting the Sevalla connector'))
-    ok(formatApiError(new ApiError(403, 'Forbidden', 'err-1')).includes('lacks the permission'))
+    strictEqual(
+      formatApiError(new ApiError(403, 'Forbidden', 'err-1')),
+      'The Sevalla API refused the request: Forbidden.',
+    )
+    strictEqual(
+      formatApiError(new ApiError(403, 'This API key is missing the APP:CREATE permission. Grant it to the key.')),
+      'The Sevalla API refused the request: This API key is missing the APP:CREATE permission. Grant it to the key.',
+    )
     ok(formatApiError(new ApiError(404, 'App not found')).includes('list_services'))
     ok(formatApiError(new ApiError(429, 'Too many', undefined, undefined, '30')).includes('after 30 seconds'))
     const serverError = formatApiError(new ApiError(500, 'Boom', 'err-9'))

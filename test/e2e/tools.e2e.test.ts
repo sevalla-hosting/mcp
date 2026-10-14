@@ -586,7 +586,7 @@ describe('e2e: generic API tools', () => {
     strictEqual(annotations?.destructiveHint, true)
   })
 
-  it('explains missing permissions', async () => {
+  it('passes on the permission the API reports as missing', async () => {
     const readOnly = await h.connect({ token: TOKENS.readOnly })
     const res = await readOnly.call('sevalla_api_update', {
       operation_id: 'execProcessCommandV3',
@@ -594,8 +594,10 @@ describe('e2e: generic API tools', () => {
       body: { command: ['rm', '-rf', '/tmp/x'] },
     })
     strictEqual(res.isError, true)
-    ok(res.text.includes('lacks the permission'))
-    ok(res.text.includes('APP:UPDATE for any other command'))
+    strictEqual(
+      res.text,
+      'The Sevalla API refused the request: This API key is missing the APP:UPDATE permission. Grant it to the key or use a key that has it.',
+    )
   })
 })
 

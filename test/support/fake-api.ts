@@ -831,7 +831,11 @@ export const startFakeApi = async (): Promise<FakeApi> => {
       return send(401, { message: 'Unauthorized', status: 401, data: { code: 'err-401' } })
     }
     if (token === TOKENS.readOnly && route.op.method !== 'GET') {
-      return send(403, { message: 'Forbidden', status: 403, data: { code: 'err-403' } })
+      return send(403, {
+        message: 'This API key is missing the APP:UPDATE permission. Grant it to the key or use a key that has it.',
+        status: 403,
+        data: { code: 'err-403' },
+      })
     }
     const values = route.pattern.exec(url.pathname)?.slice(1) ?? []
     const params = Object.fromEntries(route.names.map((name, i) => [name, decodeURIComponent(values[i] ?? '')]))

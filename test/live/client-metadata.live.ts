@@ -10,6 +10,11 @@ const KNOWN_CLIENTS = [
     redirectUri: 'https://claude.ai/api/mcp/auth_callback',
   },
   {
+    clientId: 'https://claude.ai/oauth/claude-code-client-metadata',
+    name: 'Claude Code',
+    redirectUri: 'http://localhost:54321/callback',
+  },
+  {
     clientId: 'https://chatgpt.com/oauth/client.json',
     name: 'ChatGPT',
     redirectUri: 'https://chatgpt.com/connector_platform_oauth_redirect',

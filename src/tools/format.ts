@@ -67,7 +67,7 @@ export const formatApiError = (err: ApiError): string => {
     case 401:
       return 'The Sevalla API key for this connection is invalid, expired or revoked. Reconnecting the Sevalla connector issues a new one.'
     case 403:
-      return `The Sevalla API key for this connection lacks the permission for this action: ${err.message}.`
+      return `The Sevalla API refused the request: ${/[.!?]$/.test(err.message) ? err.message : `${err.message}.`}`
     case 404:
       return `Not found: ${err.message}. The ID may be wrong or belong to another company; list_services returns the IDs this connection can access.`
     case 409:
