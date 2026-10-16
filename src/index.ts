@@ -19,6 +19,8 @@ import { registerTools, serverInstructions } from './tools/index.ts'
 const INDEX_HTML = readFileSync(new URL('./index.html', import.meta.url), 'utf8')
 const ICON_PNG = readFileSync(new URL('./assets/sevalla-256.png', import.meta.url))
 const ICON_SVG = readFileSync(new URL('./assets/sevalla.svg', import.meta.url), 'utf8')
+const FAVICON_ICO = readFileSync(new URL('./assets/favicon.ico', import.meta.url))
+const FAVICON_SVG = readFileSync(new URL('./assets/favicon.svg', import.meta.url), 'utf8')
 
 const IS_STDIO = process.argv.includes('--stdio')
 if (IS_STDIO) {
@@ -150,16 +152,19 @@ app.use(
 app.get('/', (c) => c.html(INDEX_HTML))
 
 const ICON_HEADERS = { 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' }
+const SVG_HEADERS = {
+  ...ICON_HEADERS,
+  'content-type': 'image/svg+xml',
+  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'",
+}
 
 app.get('/icon.png', (c) => c.body(ICON_PNG, 200, { ...ICON_HEADERS, 'content-type': 'image/png' }))
 
-app.get('/icon.svg', (c) =>
-  c.body(ICON_SVG, 200, {
-    ...ICON_HEADERS,
-    'content-type': 'image/svg+xml',
-    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'",
-  }),
-)
+app.get('/icon.svg', (c) => c.body(ICON_SVG, 200, SVG_HEADERS))
+
+app.get('/favicon.ico', (c) => c.body(FAVICON_ICO, 200, { ...ICON_HEADERS, 'content-type': 'image/x-icon' }))
+
+app.get('/favicon.svg', (c) => c.body(FAVICON_SVG, 200, SVG_HEADERS))
 
 app.get('/.well-known/glama.json', (c) => {
   return c.json({

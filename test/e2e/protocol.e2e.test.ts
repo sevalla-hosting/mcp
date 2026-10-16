@@ -239,6 +239,20 @@ describe('e2e protocol: HTTP surface', () => {
     ok(text.startsWith('<svg'))
     ok(!/<script|on\w+=/i.test(text))
   })
+
+  it('serves the favicons the landing page links', async () => {
+    const page = await (await fetch(`${h.baseUrl}/`)).text()
+    ok(page.includes('href="/favicon.ico"') && page.includes('href="/favicon.svg"'))
+    const ico = await fetch(`${h.baseUrl}/favicon.ico`)
+    strictEqual(ico.status, 200)
+    strictEqual(ico.headers.get('content-type'), 'image/x-icon')
+    deepStrictEqual([...new Uint8Array(await ico.arrayBuffer()).subarray(0, 4)], [0, 0, 1, 0])
+    const svg = await fetch(`${h.baseUrl}/favicon.svg`)
+    strictEqual(svg.status, 200)
+    strictEqual(svg.headers.get('content-type'), 'image/svg+xml')
+    ok(svg.headers.get('content-security-policy')?.includes("default-src 'none'"))
+    ok((await svg.text()).startsWith('<svg'))
+  })
 })
 
 describe('e2e protocol: stdio', () => {
