@@ -21,6 +21,7 @@ const ICON_PNG = readFileSync(new URL('./assets/sevalla-256.png', import.meta.ur
 const ICON_SVG = readFileSync(new URL('./assets/sevalla.svg', import.meta.url), 'utf8')
 const FAVICON_ICO = readFileSync(new URL('./assets/favicon.ico', import.meta.url))
 const FAVICON_SVG = readFileSync(new URL('./assets/favicon.svg', import.meta.url), 'utf8')
+const OG_PNG = readFileSync(new URL('./assets/og.png', import.meta.url))
 
 const IS_STDIO = process.argv.includes('--stdio')
 if (IS_STDIO) {
@@ -165,6 +166,8 @@ app.get('/icon.svg', (c) => c.body(ICON_SVG, 200, SVG_HEADERS))
 app.get('/favicon.ico', (c) => c.body(FAVICON_ICO, 200, { ...ICON_HEADERS, 'content-type': 'image/x-icon' }))
 
 app.get('/favicon.svg', (c) => c.body(FAVICON_SVG, 200, SVG_HEADERS))
+
+app.get('/og.png', (c) => c.body(OG_PNG, 200, { ...ICON_HEADERS, 'content-type': 'image/png' }))
 
 app.get('/.well-known/glama.json', (c) => {
   return c.json({
