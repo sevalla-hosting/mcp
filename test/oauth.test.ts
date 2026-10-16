@@ -10,8 +10,12 @@ import {
   decrypt,
   decryptClientId,
   validateRedirectUri,
+  redirectUriMatches,
+  describeClient,
   getBearerAuthChallenge,
   createOAuthRouter,
+  isAcceptedResource,
+  resolveBearerToken,
 } from '../src/oauth.ts'
 
 const makeClientId = (redirectUris: string[]) =>
@@ -72,9 +76,12 @@ describe('encrypt / decrypt', () => {
   })
 
   it('rejects tampered ciphertext', () => {
-    const encrypted = encrypt('secret')
-    const tampered = encrypted.slice(0, -2) + 'XX'
-    throws(() => decrypt(tampered))
+    const original = Buffer.from(encrypt('secret'), 'base64url')
+    for (const index of [0, 12, original.length - 1]) {
+      const tampered = Buffer.from(original)
+      tampered[index] ^= 0x01
+      throws(() => decrypt(tampered.toString('base64url')), `byte ${index}`)
+    }
   })
 })
 
@@ -110,17 +117,79 @@ describe('decryptClientId', () => {
 })
 
 describe('validateRedirectUri', () => {
-  it('allows any valid URL', () => {
+  it('allows https, loopback http and native app schemes', () => {
+    strictEqual(validateRedirectUri('https://claude.ai/api/mcp/auth_callback'), true)
     strictEqual(validateRedirectUri('http://localhost:8080/callback'), true)
-    strictEqual(validateRedirectUri('https://example.com/callback'), true)
-    strictEqual(validateRedirectUri('http://evil.com/callback'), true)
+    strictEqual(validateRedirectUri('http://127.0.0.1:53682/callback'), true)
+    strictEqual(validateRedirectUri('http://[::1]:3000/cb'), true)
     strictEqual(validateRedirectUri('cursor://anysphere.cursor-mcp/oauth/callback'), true)
     strictEqual(validateRedirectUri('vscode://extension/callback'), true)
   })
 
-  it('rejects invalid URIs', () => {
+  it('rejects plain http on public hosts, script schemes, fragments and invalid URIs', () => {
+    strictEqual(validateRedirectUri('http://evil.com/callback'), false)
+    strictEqual(validateRedirectUri('javascript:alert(1)'), false)
+    strictEqual(validateRedirectUri('data:text/html,hi'), false)
+    strictEqual(validateRedirectUri('file:///etc/passwd'), false)
+    strictEqual(validateRedirectUri('https://claude.ai/cb#fragment'), false)
     strictEqual(validateRedirectUri('not-a-url'), false)
     strictEqual(validateRedirectUri(''), false)
+  })
+})
+
+describe('redirectUriMatches', () => {
+  it('matches exactly, and loopback redirects on any port', () => {
+    strictEqual(redirectUriMatches('https://claude.ai/cb', 'https://claude.ai/cb'), true)
+    strictEqual(redirectUriMatches('http://localhost/callback', 'http://localhost:3118/callback'), true)
+    strictEqual(redirectUriMatches('http://127.0.0.1:1/callback', 'http://127.0.0.1:2/callback'), true)
+  })
+
+  it('does not match different hosts, paths or non-loopback ports', () => {
+    strictEqual(redirectUriMatches('http://localhost/callback', 'http://127.0.0.1/callback'), false)
+    strictEqual(redirectUriMatches('http://localhost/callback', 'http://localhost:3000/other'), false)
+    strictEqual(redirectUriMatches('https://claude.ai/cb', 'https://claude.ai:8443/cb'), false)
+  })
+})
+
+describe('isAcceptedResource', () => {
+  it('accepts this server as the resource, with or without a trailing slash', () => {
+    process.env.PUBLIC_URL = 'https://mcp.test.com'
+    try {
+      for (const value of [
+        undefined,
+        '',
+        'https://mcp.test.com/mcp',
+        'https://mcp.test.com/mcp/',
+        'https://mcp.test.com',
+      ]) {
+        strictEqual(isAcceptedResource(value), true, String(value))
+      }
+      for (const value of [
+        'https://mcp.test.com/mcp//',
+        'https://other.example/mcp',
+        'https://mcp.test.com/other',
+        42,
+      ]) {
+        strictEqual(isAcceptedResource(value), false, String(value))
+      }
+    } finally {
+      delete process.env.PUBLIC_URL
+    }
+  })
+
+  it('rejects a huge run of slashes in linear time', () => {
+    const started = Date.now()
+    strictEqual(isAcceptedResource(`${'/'.repeat(200_000)}x`), false)
+    ok(Date.now() - started < 50)
+  })
+})
+
+describe('describeClient', () => {
+  it('names the host of the redirect URI', () => {
+    strictEqual(describeClient('https://claude.ai/api/mcp/auth_callback'), 'claude.ai')
+    strictEqual(describeClient('http://localhost:3118/callback'), 'localhost')
+    strictEqual(describeClient('cursor://anysphere.cursor-mcp/oauth/callback'), 'cursor://anysphere.cursor-mcp')
+    strictEqual(describeClient('https://claude.ai/api/mcp/auth_callback', 'Claude'), 'claude.ai - Claude')
   })
 })
 
@@ -152,7 +221,11 @@ describe('well-known endpoints', () => {
     process.env.PUBLIC_URL = 'https://mcp.test.com'
     strictEqual(
       getBearerAuthChallenge(),
-      'Bearer resource_metadata="https://mcp.test.com/.well-known/oauth-protected-resource"',
+      'Bearer resource_metadata="https://mcp.test.com/.well-known/oauth-protected-resource/mcp", scope="mcp:tools"',
+    )
+    strictEqual(
+      getBearerAuthChallenge('/mcp', 'invalid_token'),
+      'Bearer resource_metadata="https://mcp.test.com/.well-known/oauth-protected-resource/mcp", scope="mcp:tools", error="invalid_token"',
     )
     delete process.env.PUBLIC_URL
   })
@@ -315,7 +388,7 @@ describe('GET /oauth/authorize', () => {
       strictEqual(url.origin, 'https://app.sevalla.com')
       strictEqual(url.pathname, '/authorize')
       strictEqual(url.searchParams.get('code'), 'TESTCODE')
-      strictEqual(url.searchParams.get('name'), 'Sevalla MCP')
+      strictEqual(url.searchParams.get('name'), 'Sevalla MCP (localhost)')
 
       const callbackUrl = new URL(url.searchParams.get('callback') ?? '')
       strictEqual(callbackUrl.pathname, '/oauth/callback/TESTCODE')
@@ -470,7 +543,8 @@ describe('GET /oauth/callback/:deviceCode', () => {
       strictEqual(location.searchParams.get('state'), 'test-state')
       const authCode = location.searchParams.get('code') ?? ''
       ok(authCode.length > 0)
-      const stored = JSON.parse(decrypt(authCode))
+      const stored = JSON.parse(decrypt(authCode, 'aes:code'))
+      strictEqual(stored.type, 'authorization_code')
       strictEqual(stored.token, 'svl_testtoken123')
       strictEqual(stored.client_id, clientId)
       strictEqual(stored.code_challenge, 'test-challenge')
@@ -545,12 +619,14 @@ describe('POST /oauth/token', () => {
 
     const code = encrypt(
       JSON.stringify({
+        type: 'authorization_code',
         token: 'svl_realtoken',
         code_challenge: challenge,
         redirect_uri: 'http://localhost:8080/callback',
         client_id: clientId,
         expires_at: Date.now() + 60_000,
       }),
+      'aes:code',
     )
 
     const res = await app.request('/oauth/token', {
@@ -567,8 +643,54 @@ describe('POST /oauth/token', () => {
 
     strictEqual(res.status, 200)
     const body = await res.json()
-    strictEqual(body.access_token, 'svl_realtoken')
+    strictEqual(resolveBearerToken(body.access_token), 'svl_realtoken')
     strictEqual(body.token_type, 'bearer')
+  })
+
+  it('only redeems authorization codes, never other encrypted blobs', async () => {
+    const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'
+    const challenge = createHash('sha256').update(verifier).digest('base64url')
+    const redirectUri = 'http://localhost:8080/callback'
+    const clientId = makeClientId([redirectUri])
+    const fields = {
+      token: 'svl_realtoken',
+      code_challenge: challenge,
+      redirect_uri: redirectUri,
+      client_id: clientId,
+      expires_at: Date.now() + 60_000,
+    }
+    const redeem = async (code: string) => {
+      const res = await app.request('/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri,
+          client_id: clientId,
+          code_verifier: verifier,
+        }).toString(),
+      })
+      return { status: res.status, error: (await res.json()).error }
+    }
+    const cases = {
+      'a code without a type': encrypt(JSON.stringify(fields), 'aes:code'),
+      'a code under the registration key': encrypt(JSON.stringify({ type: 'authorization_code', ...fields })),
+      'a code under the access token key': encrypt(
+        JSON.stringify({ type: 'authorization_code', ...fields }),
+        'aes:access',
+      ),
+      'a client registration': clientId,
+      'a code without an expiry': encrypt(
+        JSON.stringify({ type: 'authorization_code', ...fields, expires_at: undefined }),
+        'aes:code',
+      ),
+    }
+    for (const [name, code] of Object.entries(cases)) {
+      const result = await redeem(code)
+      strictEqual(result.status, 400, name)
+      strictEqual(result.error, 'invalid_grant', name)
+    }
   })
 
   it('rejects invalid PKCE verifier', async () => {
@@ -577,12 +699,14 @@ describe('POST /oauth/token', () => {
 
     const code = encrypt(
       JSON.stringify({
+        type: 'authorization_code',
         token: 'svl_token',
         code_challenge: challenge,
         redirect_uri: 'http://localhost:8080/callback',
         client_id: clientId,
         expires_at: Date.now() + 60_000,
       }),
+      'aes:code',
     )
 
     const res = await app.request('/oauth/token', {
@@ -609,12 +733,14 @@ describe('POST /oauth/token', () => {
 
     const code = encrypt(
       JSON.stringify({
+        type: 'authorization_code',
         token: 'svl_token',
         code_challenge: challenge,
         redirect_uri: 'http://localhost:8080/callback',
         client_id: clientId,
         expires_at: Date.now() + 60_000,
       }),
+      'aes:code',
     )
 
     const res = await app.request('/oauth/token', {
@@ -639,12 +765,14 @@ describe('POST /oauth/token', () => {
 
     const code = encrypt(
       JSON.stringify({
+        type: 'authorization_code',
         token: 'svl_token',
         code_challenge: challenge,
         redirect_uri: 'http://localhost:8080/callback',
         client_id: clientId,
         expires_at: Date.now() - 1000,
       }),
+      'aes:code',
     )
 
     const res = await app.request('/oauth/token', {
@@ -672,12 +800,14 @@ describe('POST /oauth/token', () => {
 
     const code = encrypt(
       JSON.stringify({
+        type: 'authorization_code',
         token: 'svl_token',
         code_challenge: challenge,
         redirect_uri: 'http://localhost:8080/callback',
         client_id: clientA,
         expires_at: Date.now() + 60_000,
       }),
+      'aes:code',
     )
 
     const res = await app.request('/oauth/token', {

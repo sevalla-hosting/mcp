@@ -13,44 +13,112 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:code
 
-  test:
+  unit:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [24, 26]
+    name: unit (Node ${{ matrix.node }})
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
+      - run: pnpm test:unit
+
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [24, 26]
+    name: e2e (Node ${{ matrix.node }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:e2e
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:coverage
+
+  live:
+    needs: [check, unit, e2e]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      SEVALLA_E2E_API_KEY: ${{ secrets.SEVALLA_E2E_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Live checks (client metadata documents; Sevalla API smoke test when the key is set)
+        run: pnpm test:live
 
   docker:
-    needs: [check, test]
-    if: github.ref == 'refs/heads/main'
+    needs: [check, unit, e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: docker/login-action@v4
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: sevalla-mcp:ci
+
+      - name: Smoke test the container
+        run: |
+          docker run -d --name mcp -p 3000:3000 -e OAUTH_SECRET="$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')" sevalla-mcp:ci
+          for _ in $(seq 1 30); do curl -sf http://localhost:3000/health && break; sleep 1; done
+          curl -sf http://localhost:3000/health
+          curl -sf http://localhost:3000/.well-known/oauth-protected-resource/mcp | grep -q '"resource":"https://mcp.sevalla.com/mcp"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/mcp)" = "401"
+          curl -sf http://localhost:3000/.well-known/oauth-authorization-server | grep -q '"client_id_metadata_document_supported":true'
+          test "$(curl -s -o /dev/null -w '%{http_code}:%{content_type}' http://localhost:3000/icon.png)" = "200:image/png"
+          docker logs mcp
+
+      - if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/metadata-action@v6
+      - if: github.ref == 'refs/heads/main'
+        uses: docker/metadata-action@v6
         id: meta
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -58,7 +126,8 @@ jobs:
             type=sha
             type=raw,value=latest
 
-      - uses: docker/build-push-action@v7
+      - if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true

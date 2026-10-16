@@ -1,0 +1,35 @@
+name: API drift
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  operations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Compare the live Sevalla API spec with src/sevalla/operations.json
+        run: pnpm check:operations
+
+  live:
+    runs-on: ubuntu-latest
+    env:
+      SEVALLA_E2E_API_KEY: ${{ secrets.SEVALLA_E2E_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Live checks (client metadata documents; Sevalla API smoke test when the key is set)
+        run: pnpm test:live
