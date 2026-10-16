@@ -3,424 +3,959 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sevalla MCP</title>
+    <title>Sevalla MCP server</title>
     <meta
       name="description"
-      content="Connect AI coding agents to Sevalla — a hosted Model Context Protocol endpoint for your platform."
+      content="Connect Claude, ChatGPT, Cursor, VS Code and other AI agents to Sevalla to deploy, debug and manage applications, databases and static sites."
     />
-    <link rel="icon" href="https://sevalla.com/favicon.ico" type="image/x-icon" sizes="48x48" />
-    <link rel="icon" href="https://sevalla.com/favicon.ico" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0c0a09" media="(prefers-color-scheme: dark)" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <style type="text/tailwindcss">
-      @theme {
-        --font-display: 'Funnel Display', sans-serif;
-        --font-body: 'Manrope', sans-serif;
-        --color-brand: #fa7216;
-        --color-brand-600: #e5630c;
+    <style>
+      :root {
+        color-scheme: light;
+        --background: #ffffff;
+        --foreground: #0c0a09;
+        --card: #ffffff;
+        --muted: #f5f5f4;
+        --muted-foreground: #67625d;
+        --lead: #67625d;
+        --quiet: #78716c;
+        --border: #e7e5e4;
+        --border-strong: #d6d3d1;
+        --primary: #1c1917;
+        --primary-foreground: #fafaf9;
+        --primary-hover: #44403c;
+        --ring: #d04000;
+        --success: #15803d;
+        --sidebar: #fafaf9;
+        --sidebar-accent: #eeedec;
+        --code: #eeedec;
+        --code-quiet: #67625d;
+        --copy-hover: rgb(12 10 9 / 0.06);
+        --wordmark: #0c0a09;
+        --shadow: 0 1px 2px rgb(12 10 9 / 0.04), 0 16px 40px -20px rgb(12 10 9 / 0.16);
+        --art-cell: #0c0a09;
+        --art-cells: 0.045;
+        --art-lit: #78716c;
+        --art-glow: rgb(255 95 0 / 0.12);
+        --art-shadow: #0c0a09;
+        --art-shadow-opacity: 0.1;
+        --art-sky: rgb(255 255 255 / 0);
+        --ease: cubic-bezier(0.16, 1, 0.3, 1);
+        --display: 'Funnel Display', 'Inter', ui-sans-serif, system-ui, sans-serif;
+        --sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+        --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
       }
 
-      @layer components {
-        .fade-up {
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+          --background: #0c0a09;
+          --foreground: #f5f5f4;
+          --card: #141110;
+          --muted: #221f1d;
+          --muted-foreground: #918a85;
+          --lead: #a8a29e;
+          --quiet: #78716c;
+          --border: rgb(255 255 255 / 0.09);
+          --border-strong: rgb(255 255 255 / 0.18);
+          --primary: #f5f5f4;
+          --primary-foreground: #1c1917;
+          --primary-hover: #d6d3d1;
+          --ring: #ff5f00;
+          --success: #22c55e;
+          --sidebar: #141110;
+          --sidebar-accent: #221f1d;
+          --code: #1c1917;
+          --code-quiet: #918a85;
+          --copy-hover: rgb(255 255 255 / 0.08);
+          --wordmark: #ffffff;
+          --shadow: none;
+          --art-cell: #ffffff;
+          --art-lit: #d6d3d1;
+          --art-glow: rgb(255 95 0 / 0.22);
+          --art-shadow: #000000;
+          --art-shadow-opacity: 0.6;
+          --art-sky: #1c1917;
+        }
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --background: #0c0a09;
+        --foreground: #f5f5f4;
+        --card: #141110;
+        --muted: #221f1d;
+        --muted-foreground: #918a85;
+        --lead: #a8a29e;
+        --quiet: #78716c;
+        --border: rgb(255 255 255 / 0.09);
+        --border-strong: rgb(255 255 255 / 0.18);
+        --primary: #f5f5f4;
+        --primary-foreground: #1c1917;
+        --primary-hover: #d6d3d1;
+        --ring: #ff5f00;
+        --success: #22c55e;
+        --sidebar: #141110;
+        --sidebar-accent: #221f1d;
+        --code: #1c1917;
+        --code-quiet: #918a85;
+        --copy-hover: rgb(255 255 255 / 0.08);
+        --wordmark: #ffffff;
+        --shadow: none;
+        --art-cell: #ffffff;
+        --art-lit: #d6d3d1;
+        --art-glow: rgb(255 95 0 / 0.22);
+        --art-shadow: #000000;
+        --art-shadow-opacity: 0.6;
+        --art-sky: #1c1917;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+
+      body {
+        margin: 0;
+        overflow-x: hidden;
+        background: var(--background);
+        color: var(--foreground);
+        font: 400 1rem/1.6 var(--sans);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      ::selection {
+        background: rgb(255 95 0 / 0.18);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 72rem;
+        margin-inline: auto;
+        padding-inline: 1.5rem;
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero-inner {
+        position: relative;
+        padding-top: 2rem;
+        padding-bottom: 4.5rem;
+      }
+
+      .art {
+        display: none;
+      }
+
+      .topbar {
+        position: relative;
+        display: flex;
+        align-items: center;
+        height: 2.5rem;
+      }
+
+      .brand {
+        display: inline-flex;
+        border-radius: 0.375rem;
+        color: var(--wordmark);
+      }
+
+      .wordmark {
+        display: none;
+        width: auto;
+        height: 1.625rem;
+      }
+
+      .lockup {
+        display: block;
+        width: auto;
+        height: 2.25rem;
+      }
+
+      .intro {
+        position: relative;
+        max-width: 40rem;
+        padding-top: 3.5rem;
+      }
+
+      .eyebrow,
+      .label {
+        margin: 0;
+        color: var(--muted-foreground);
+        font: 500 0.8125rem/1 var(--mono);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 1.25rem 0 0;
+        font: 600 clamp(2.25rem, 4.2vw + 0.5rem, 3.5rem)/1.06 var(--display);
+        letter-spacing: -0.02em;
+      }
+
+      h1 span {
+        display: block;
+        text-wrap: balance;
+      }
+
+      h1 .quiet {
+        color: var(--quiet);
+      }
+
+      .lead {
+        max-width: 34rem;
+        margin: 1.5rem 0 0;
+        color: var(--lead);
+        font-size: 1.125rem;
+        line-height: 1.6;
+        text-wrap: pretty;
+      }
+
+      .endpoint {
+        margin-top: 2.5rem;
+      }
+
+      .endpoint-copy {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        width: 100%;
+        max-width: 30rem;
+        margin-top: 0.75rem;
+        padding: 0.875rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        background: var(--card);
+        color: var(--foreground);
+        font: 500 0.9375rem/1.4 var(--mono);
+        text-align: left;
+        cursor: pointer;
+        transition:
+          border-color 200ms var(--ease),
+          transform 120ms var(--ease);
+      }
+
+      .endpoint-copy:hover {
+        border-color: var(--border-strong);
+      }
+
+      .endpoint-copy:active {
+        transform: scale(0.99);
+      }
+
+      .endpoint-copy code {
+        overflow: hidden;
+        font: inherit;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .copy-icon {
+        display: grid;
+        flex: none;
+        color: var(--muted-foreground);
+        transition: color 120ms var(--ease);
+      }
+
+      .copy-icon svg,
+      .copy svg {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      .endpoint-copy:hover .copy-icon {
+        color: var(--foreground);
+      }
+
+      .copied .copy-icon,
+      .copied .copy,
+      .copied .copy:hover {
+        color: var(--success);
+      }
+
+      .facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.5rem;
+        margin: 1rem 0 0;
+        padding: 0;
+        color: var(--muted-foreground);
+        font: 400 0.8125rem/1.4 var(--mono);
+        list-style: none;
+      }
+
+      .facts li {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .facts li::before {
+        content: '';
+        width: 0.375rem;
+        height: 0.375rem;
+        border-radius: 0.09375rem;
+        background: currentColor;
+      }
+
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1.75rem;
+        margin-top: 2.25rem;
+        font-size: 0.9375rem;
+        font-weight: 500;
+      }
+
+      .links a {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        border-radius: 0.25rem;
+        color: var(--lead);
+        text-decoration: none;
+        transition: color 120ms var(--ease);
+      }
+
+      .links a:hover {
+        color: var(--foreground);
+      }
+
+      .links svg {
+        width: 0.875rem;
+        height: 0.875rem;
+      }
+
+      .setup {
+        padding-bottom: 5rem;
+      }
+
+      h2 {
+        margin: 0 0 1.25rem;
+        font: 600 1.75rem/1.2 var(--display);
+        letter-spacing: -0.02em;
+      }
+
+      .card {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        background: var(--card);
+        box-shadow: var(--shadow);
+      }
+
+      .tabs {
+        display: flex;
+        gap: 0.25rem;
+        overflow-x: auto;
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--sidebar);
+        scrollbar-width: none;
+      }
+
+      .tabs::-webkit-scrollbar {
+        display: none;
+      }
+
+      .tab {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.5rem 0.75rem;
+        border: 0;
+        border-radius: 0.5rem;
+        background: transparent;
+        color: var(--muted-foreground);
+        font: 500 0.9375rem/1.2 var(--sans);
+        text-align: left;
+        white-space: nowrap;
+        cursor: pointer;
+        transition:
+          color 120ms var(--ease),
+          background-color 120ms var(--ease);
+      }
+
+      .tab:hover {
+        color: var(--foreground);
+      }
+
+      .tab[aria-selected='true'] {
+        background: var(--sidebar-accent);
+        color: var(--foreground);
+      }
+
+      .tab svg {
+        flex: none;
+        width: 1.125rem;
+        height: 1.125rem;
+      }
+
+      .panel {
+        padding: 1.5rem 1.25rem 1.75rem;
+      }
+
+      .panel:focus-visible {
+        outline-offset: -2px;
+      }
+
+      h3 {
+        margin: 0;
+        font: 600 1.375rem/1.25 var(--display);
+        letter-spacing: -0.02em;
+      }
+
+      .panel p {
+        max-width: 40rem;
+        margin: 0.625rem 0 1.25rem;
+        color: var(--lead);
+        font-size: 0.9375rem;
+        line-height: 1.65;
+        text-wrap: pretty;
+      }
+
+      .panel p code {
+        padding: 0.125rem 0.375rem;
+        border-radius: 0.375rem;
+        background: var(--muted);
+        color: var(--foreground);
+        font: 500 0.8125rem/1 var(--mono);
+      }
+
+      .panel strong {
+        color: var(--foreground);
+        font-weight: 600;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+        padding: 0.625rem 1rem;
+        border-radius: 0.625rem;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font: 600 0.875rem/1.2 var(--sans);
+        text-decoration: none;
+        transition: background-color 120ms var(--ease);
+      }
+
+      .button:hover {
+        background: var(--primary-hover);
+      }
+
+      .button svg {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      .code {
+        position: relative;
+        border-radius: 0.75rem;
+        background: var(--code);
+        cursor: pointer;
+      }
+
+      .code + .code {
+        margin-top: 0.75rem;
+      }
+
+      .code pre {
+        margin: 0;
+        overflow-x: auto;
+        padding: 1rem 3.25rem 1rem 1.125rem;
+        color: var(--foreground);
+        font: 400 0.8125rem/1.7 var(--mono);
+        tab-size: 2;
+      }
+
+      .code .q {
+        color: var(--code-quiet);
+      }
+
+      .copy {
+        position: absolute;
+        top: 0.625rem;
+        right: 0.625rem;
+        display: grid;
+        place-items: center;
+        width: 2rem;
+        height: 2rem;
+        border: 0;
+        border-radius: 0.5rem;
+        background: var(--code);
+        color: var(--code-quiet);
+        cursor: pointer;
+        transition: color 120ms var(--ease);
+      }
+
+      .copy:hover {
+        background: linear-gradient(var(--copy-hover), var(--copy-hover)), var(--code);
+        color: var(--foreground);
+      }
+
+      .footer {
+        padding-top: 1.75rem;
+        padding-bottom: 2.5rem;
+        border-top: 1px solid var(--border);
+        color: var(--muted-foreground);
+        font: 400 0.8125rem/1.4 var(--mono);
+      }
+
+      .footer a {
+        border-radius: 0.25rem;
+        text-decoration: none;
+        transition: color 120ms var(--ease);
+      }
+
+      .footer a:hover {
+        color: var(--foreground);
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 1.5rem;
+        left: 50%;
+        z-index: 10;
+        padding: 0.625rem 1rem;
+        border-radius: 0.625rem;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font: 500 0.875rem/1.2 var(--sans);
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, 0.5rem);
+        transition:
+          opacity 200ms var(--ease),
+          transform 200ms var(--ease);
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      .rise {
+        animation: rise 320ms var(--ease) both;
+      }
+
+      .setup.rise {
+        animation-delay: 80ms;
+      }
+
+      @keyframes rise {
+        from {
           opacity: 0;
-          animation: fadeUp 750ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          transform: translateY(0.5rem);
         }
-        @keyframes fadeUp {
-          from {
-            opacity: 0;
-            transform: translateY(18px);
-          }
-          to {
-            opacity: 1;
-            transform: none;
-          }
+      }
+
+      @media (min-width: 48rem) {
+        .card {
+          display: grid;
+          grid-template-columns: 15rem minmax(0, 1fr);
         }
 
-        /* Segmented control */
-        .seg {
-          position: relative;
-        }
-        .seg-slider {
-          position: absolute;
-          top: 0.25rem;
-          bottom: 0.25rem;
-          left: 0;
-          width: 0;
-          border-radius: 0.6rem;
-          background: #fff;
-          box-shadow:
-            0 1px 2px rgba(0, 0, 0, 0.06),
-            0 2px 7px rgba(0, 0, 0, 0.07);
-          transition:
-            transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
-            width 360ms cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .seg-btn {
-          position: relative;
-          z-index: 1;
-          color: var(--color-stone-400);
-          transition: color 220ms ease;
-        }
-        .seg-btn:hover {
-          color: var(--color-stone-600);
-        }
-        .seg-btn[aria-selected='true'] {
-          color: var(--color-brand-600);
+        .tabs {
+          flex-direction: column;
+          overflow: visible;
+          border-right: 1px solid var(--border);
+          border-bottom: 0;
         }
 
-        /* Endpoint + code copy */
-        .copyable {
-          position: relative;
-          overflow: hidden;
-          cursor: pointer;
-          user-select: none;
-          transition:
-            box-shadow 400ms ease,
-            border-color 200ms ease,
-            transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
+        .panel {
+          padding: 2rem 2.25rem 2.25rem;
         }
-        .copyable:active {
-          transform: scale(0.99);
+      }
+
+      @media (min-width: 64rem) {
+        .wordmark {
+          display: block;
         }
-        .copyable .copy-target {
-          transition:
-            color 300ms ease,
-            transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+
+        .lockup {
+          display: none;
         }
-        .copyable.copied .copy-target {
-          color: #22c55e;
-          transform: scale(1.15);
+
+        .intro {
+          padding-top: 5rem;
         }
-        .code-block {
-          position: relative;
-          cursor: pointer;
-          overflow: hidden;
-          user-select: none;
-          border-radius: 0.85rem;
-          background-color: #1b1917;
-          padding: 0.95rem 3rem 0.95rem 1.05rem;
-          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-          font-size: 0.825rem;
-          line-height: 1.55;
-          color: var(--color-stone-100);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-          transition:
-            box-shadow 450ms ease,
-            transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .code-block:hover {
-          box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.06),
-            inset 0 0 0 1px var(--color-stone-700);
-        }
-        .code-block:active {
-          transform: scale(0.985);
-        }
-        .code-block:focus-visible {
-          outline: none;
-          box-shadow: 0 0 0 2px var(--color-brand);
-        }
-        .code-block pre {
-          margin: 0;
-        }
-        .code-block .copy-btn {
-          transition:
-            color 300ms ease,
-            transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .code-block.copied .copy-btn {
-          color: #4ade80;
-          transform: scale(1.15);
-        }
-        .ripple {
+
+        .art {
           position: absolute;
-          border-radius: 9999px;
+          top: 0;
+          right: calc(1.5rem - 690px);
+          display: block;
+          width: 2160px;
+          height: 540px;
           pointer-events: none;
-          background: radial-gradient(circle, rgba(250, 114, 22, 0.45) 0%, rgba(250, 114, 22, 0) 70%);
-          transform: scale(0);
-          opacity: 1;
-          will-change: transform, opacity;
-          transition:
-            transform 820ms cubic-bezier(0.22, 1, 0.36, 1),
-            opacity 820ms ease-out;
         }
 
-        @media (prefers-reduced-motion: reduce) {
-          .fade-up {
-            opacity: 1;
-            animation: none;
-          }
-          .seg-slider,
-          .copyable,
-          .copyable .copy-target,
-          .code-block,
-          .code-block .copy-btn,
-          .ripple {
-            transition: none;
-          }
-          .ripple {
-            display: none;
-          }
+        .art > * {
+          position: absolute;
+          inset: 0;
+        }
+
+        .art svg {
+          display: block;
+          overflow: visible;
+        }
+
+        .art-glow {
+          background: radial-gradient(circle 405px at 1335px 285px, var(--art-glow), transparent 70%);
+          -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+        }
+
+        .art-sky {
+          background: radial-gradient(circle 918px at 1335px 285px, var(--art-sky), transparent 70%);
+          -webkit-mask-image:
+            radial-gradient(circle 918px at 1335px 285px, #000 20%, rgb(0 0 0 / 0.5) 55%, transparent 100%),
+            linear-gradient(to right, transparent 30%, #000 55%), linear-gradient(to bottom, #000 62%, transparent 100%);
+          -webkit-mask-composite: source-in;
+          mask-image:
+            radial-gradient(circle 918px at 1335px 285px, #000 20%, rgb(0 0 0 / 0.5) 55%, transparent 100%),
+            linear-gradient(to right, transparent 30%, #000 55%), linear-gradient(to bottom, #000 62%, transparent 100%);
+          mask-composite: intersect;
+        }
+
+        .art-cell {
+          fill: var(--art-cell);
+          fill-opacity: var(--art-cells);
+        }
+
+        .art-lit {
+          fill: var(--art-lit);
+        }
+
+        .art-trail {
+          fill: #ff5f00;
+          animation: light 320ms var(--ease) both;
+          animation-delay: calc(360ms - var(--i) * 70ms);
+        }
+
+        .art-shadow {
+          fill: var(--art-shadow);
+          fill-opacity: var(--art-shadow-opacity);
+          animation: light 520ms var(--ease) 340ms both;
+        }
+
+        .art-tile {
+          transform-origin: 9px 9px;
+          animation: land 520ms var(--ease) 340ms both;
+        }
+
+        .art-piece {
+          animation: drop 560ms var(--ease) both;
+          animation-delay: calc(600ms + var(--i) * 90ms);
+        }
+      }
+
+      @keyframes light {
+        from {
+          opacity: 0;
+        }
+      }
+
+      @keyframes land {
+        from {
+          opacity: 0;
+          transform: scale(0.86);
+        }
+      }
+
+      @keyframes drop {
+        from {
+          opacity: 0;
+          transform: translateY(-2px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
         }
       }
     </style>
   </head>
-  <body class="min-h-screen overflow-x-hidden bg-[#fbf9f7] font-body text-stone-900 antialiased">
-    <!-- Ambient background -->
-    <div class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div
-        class="absolute inset-0 [background-image:radial-gradient(rgba(120,113,108,0.08)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_75%_60%_at_25%_0%,#000_25%,transparent_75%)]"
-      ></div>
-      <div class="absolute -top-40 -left-24 h-[480px] w-[660px] rounded-full bg-orange-300/25 blur-[130px]"></div>
-      <div class="absolute top-1/4 -right-20 h-[380px] w-[440px] rounded-full bg-amber-200/30 blur-[120px]"></div>
-    </div>
-
-    <main
-      class="mx-auto grid min-h-screen max-w-6xl grid-cols-1 items-start gap-12 px-6 py-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16 lg:py-24"
-    >
-      <!-- LEFT — brand + endpoint -->
-      <div class="fade-up min-w-0 lg:sticky lg:top-24">
-        <div class="flex items-center gap-3.5">
-          <span class="block w-12 overflow-hidden rounded-2xl shadow-lg shadow-orange-500/20 ring-1 ring-black/5">
-            <svg viewBox="0 0 560 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sevalla">
-              <rect width="559.266" height="559.266" rx="110" fill="#FA7216" />
-              <path
-                d="M157.293 182.779H216.763V220.895C216.763 229.391 216.763 247.99 232.116 247.99H342.406L392.546 298.85C392.987 299.451 393.653 300.017 394.429 300.677C397.361 303.17 401.875 307.009 401.875 319.171V377.034H342.406V338.918C342.406 330.422 342.406 311.823 327.053 311.823H216.18L166.622 260.963C166.181 260.362 165.516 259.796 164.739 259.136C161.808 256.643 157.293 252.804 157.293 240.642V182.779Z"
-                fill="#F9F5F3"
+  <body>
+    <header class="hero">
+      <div class="container hero-inner">
+        <div class="art" aria-hidden="true">
+          <div class="art-glow"></div>
+          <div class="art-sky">
+            <svg class="art-field" viewBox="0 0 2160 540" width="2160" height="540">
+              <defs>
+                <pattern id="art-cells" width="30" height="30" patternUnits="userSpaceOnUse">
+                  <rect class="art-cell" x="1.875" y="1.875" width="26.25" height="26.25" rx="3" />
+                </pattern>
+                <mask id="art-clear" maskUnits="userSpaceOnUse" x="0" y="0" width="2160" height="540">
+                  <rect width="2160" height="540" fill="#fff" />
+                  <path
+                    d="M1230 120h210v30h-210zM1200 150h270v30h-270zM1170 180h330v30h-330zM1170 210h330v30h-330zM1170 240h330v30h-330zM1170 270h330v30h-330zM1170 300h330v30h-330zM1170 330h330v30h-330zM1170 360h330v30h-330zM1200 390h270v30h-270zM1230 420h210v30h-210z"
+                    fill="#000"
+                  />
+                </mask>
+              </defs>
+              <rect width="2160" height="540" fill="url(#art-cells)" mask="url(#art-clear)" />
+              <rect class="art-lit" x="1531.875" y="211.875" width="26.25" height="26.25" rx="3" fill-opacity="0.198" />
+              <rect class="art-lit" x="1201.875" y="421.875" width="26.25" height="26.25" rx="3" fill-opacity="0.08" />
+              <rect class="art-lit" x="1951.875" y="241.875" width="26.25" height="26.25" rx="3" fill-opacity="0.15" />
+              <rect class="art-lit" x="931.875" y="391.875" width="26.25" height="26.25" rx="3" fill-opacity="0.161" />
+              <rect class="art-lit" x="781.875" y="361.875" width="26.25" height="26.25" rx="3" fill-opacity="0.124" />
+              <rect class="art-lit" x="1081.875" y="301.875" width="26.25" height="26.25" rx="3" fill-opacity="0.182" />
+              <rect class="art-lit" x="1531.875" y="31.875" width="26.25" height="26.25" rx="3" fill-opacity="0.097" />
+              <rect class="art-lit" x="1591.875" y="271.875" width="26.25" height="26.25" rx="3" fill-opacity="0.138" />
+              <rect class="art-lit" x="1111.875" y="331.875" width="26.25" height="26.25" rx="3" fill-opacity="0.087" />
+              <rect class="art-lit" x="961.875" y="1.875" width="26.25" height="26.25" rx="3" fill-opacity="0.083" />
+              <rect class="art-lit" x="871.875" y="1.875" width="26.25" height="26.25" rx="3" fill-opacity="0.11" />
+              <rect class="art-lit" x="1051.875" y="121.875" width="26.25" height="26.25" rx="3" fill-opacity="0.117" />
+              <rect class="art-lit" x="841.875" y="241.875" width="26.25" height="26.25" rx="3" fill-opacity="0.116" />
+              <rect class="art-lit" x="1471.875" y="511.875" width="26.25" height="26.25" rx="3" fill-opacity="0.208" />
+              <rect class="art-lit" x="991.875" y="121.875" width="26.25" height="26.25" rx="3" fill-opacity="0.096" />
+              <rect class="art-lit" x="1081.875" y="391.875" width="26.25" height="26.25" rx="3" fill-opacity="0.07" />
+              <rect class="art-lit" x="841.875" y="181.875" width="26.25" height="26.25" rx="3" fill-opacity="0.202" />
+              <rect class="art-lit" x="1081.875" y="511.875" width="26.25" height="26.25" rx="3" fill-opacity="0.166" />
+              <rect class="art-lit" x="1531.875" y="1.875" width="26.25" height="26.25" rx="3" fill-opacity="0.142" />
+              <rect class="art-lit" x="1561.875" y="121.875" width="26.25" height="26.25" rx="3" fill-opacity="0.112" />
+              <rect class="art-lit" x="1831.875" y="151.875" width="26.25" height="26.25" rx="3" fill-opacity="0.101" />
+              <rect class="art-lit" x="1651.875" y="361.875" width="26.25" height="26.25" rx="3" fill-opacity="0.194" />
+              <rect class="art-lit" x="1351.875" y="61.875" width="26.25" height="26.25" rx="3" fill-opacity="0.146" />
+              <rect
+                class="art-trail"
+                style="--i: 0"
+                x="1171.875"
+                y="121.875"
+                width="26.25"
+                height="26.25"
+                rx="3"
+                fill-opacity="0.95"
               />
-              <path d="M216.763 116.878V182.779L342.697 182.778V116.878H216.763Z" fill="#F9F5F3" />
-              <path d="M216.18 377.034V442.934H342.697V377.034H216.18Z" fill="#F9F5F3" />
-              <path d="M342.697 182.779L342.406 247.99H401.972L401.875 182.779H342.697Z" fill="#F9F5F3" />
-              <path d="M157.293 311.823V377.034H216.18L216.18 311.823H157.293Z" fill="#F9F5F3" />
+              <rect
+                class="art-trail"
+                style="--i: 0"
+                x="1201.875"
+                y="121.875"
+                width="26.25"
+                height="26.25"
+                rx="3"
+                fill-opacity="0.3"
+              />
+              <rect
+                class="art-trail"
+                style="--i: 1"
+                x="1141.875"
+                y="91.875"
+                width="26.25"
+                height="26.25"
+                rx="3"
+                fill-opacity="0.811"
+              />
+              <rect
+                class="art-trail"
+                style="--i: 1"
+                x="1171.875"
+                y="91.875"
+                width="26.25"
+                height="26.25"
+                rx="3"
+                fill-opacity="0.243"
+              />
+              <rect
+                class="art-trail"
+                style="--i: 2"
+                x="1111.875"
+                y="61.875"
+                width="26.25"
+                height="26.25"
+                rx="3"
+                fill-opacity="0.68"
+              />
+              <rect
+                class="art-trail"
+                style="--i: 2"
+                x="1141.875"
+                y="61.875"
+                width="26.25"
+                height="26.25"
+                rx="3"
+                fill-opacity="0.192"
+              />
+              <rect
+                class="art-trail"
+                style="--i: 3"
+                x="1081.875"
+                y="31.875"
+                width="26.25"
+                height="26.25"
+                rx="3"
+                fill-opacity="0.556"
+              />
+              <rect
+                class="art-trail"
+                style="--i: 3"
+                x="1111.875"
+                y="31.875"
+                width="26.25"
+                height="26.25"
+                rx="3"
+                fill-opacity="0.147"
+              />
+              <rect
+                class="art-trail"
+                style="--i: 4"
+                x="1051.875"
+                y="1.875"
+                width="26.25"
+                height="26.25"
+                rx="3"
+                fill-opacity="0.442"
+              />
+              <rect
+                class="art-trail"
+                style="--i: 4"
+                x="1081.875"
+                y="1.875"
+                width="26.25"
+                height="26.25"
+                rx="3"
+                fill-opacity="0.108"
+              />
             </svg>
-          </span>
-          <div>
-            <p class="font-display text-xl font-semibold leading-none tracking-tight">Sevalla</p>
-            <p class="mt-1.5 text-sm leading-none text-stone-500">MCP Server</p>
           </div>
+          <svg class="art-mark" viewBox="0 0 2160 540" width="2160" height="540">
+            <defs>
+              <filter id="art-soft" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="43.2" />
+              </filter>
+            </defs>
+            <path
+              class="art-shadow"
+              d="M1374 166.2c33.603 0 50.405 0 63.239 6.54a60 60 0 0 1 26.221 26.221c6.54 12.835 6.54 29.636 6.54 63.239L1470 340.2c0 33.603 0 50.405 -6.54 63.239a60 60 0 0 1 -26.221 26.221c-12.835 6.54 -29.636 6.54 -63.239 6.54L1296 436.2c-33.603 0 -50.405 0 -63.239 -6.54a60 60 0 0 1 -26.221 -26.221c-6.54 -12.835 -6.54 -29.636 -6.54 -63.239L1200 262.2c0 -33.603 0 -50.405 6.54 -63.239a60 60 0 0 1 26.221 -26.221c12.835 -6.54 29.636 -6.54 63.239 -6.54Z"
+              filter="url(#art-soft)"
+            />
+            <g transform="translate(1200 150) scale(15)">
+              <path
+                class="art-tile"
+                d="M11.6 0c2.24 0 3.36 0 4.216 0.436a4 4 0 0 1 1.748 1.748c0.436 0.856 0.436 1.976 0.436 4.216L18 11.6c0 2.24 0 3.36 -0.436 4.216a4 4 0 0 1 -1.748 1.748c-0.856 0.436 -1.976 0.436 -4.216 0.436L6.4 18c-2.24 0 -3.36 0 -4.216 -0.436a4 4 0 0 1 -1.748 -1.748c-0.436 -0.856 -0.436 -1.976 -0.436 -4.216L0 6.4c0 -2.24 0 -3.36 0.436 -4.216a4 4 0 0 1 1.748 -1.748c0.856 -0.436 1.976 -0.436 4.216 -0.436Z"
+                fill="#ff5f00"
+              />
+              <path
+                class="art-piece"
+                style="--i: 0"
+                d="M7.15 4.55A0.4 0.4 0 0 1 7.55 4.15L10.45 4.15A0.4 0.4 0 0 1 10.85 4.55L10.85 5.45A0.4 0.4 0 0 1 10.45 5.85L7.55 5.85A0.4 0.4 0 0 1 7.15 5.45Z"
+                fill="#ffffff"
+              />
+              <path
+                class="art-piece"
+                style="--i: 1"
+                d="M11.15 6.55A0.4 0.4 0 0 1 11.55 6.15L12.45 6.15A0.4 0.4 0 0 1 12.85 6.55L12.85 7.45A0.4 0.4 0 0 1 12.45 7.85L11.55 7.85A0.4 0.4 0 0 1 11.15 7.45Z"
+                fill="#ffffff"
+              />
+              <path
+                class="art-piece"
+                style="--i: 2"
+                d="M5.15 6.55A0.4 0.4 0 0 1 5.55 6.15L6.45 6.15A0.4 0.4 0 0 1 6.85 6.55L6.85 7.75A0.4 0.4 0 0 0 7.25 8.15L10.772 8.15A0.4 0.4 0 0 1 11.055 8.267L12.733 9.945A0.4 0.4 0 0 1 12.85 10.228L12.85 11.45A0.4 0.4 0 0 1 12.45 11.85L11.55 11.85A0.4 0.4 0 0 1 11.15 11.45L11.15 10.25A0.4 0.4 0 0 0 10.75 9.85L7.228 9.85A0.4 0.4 0 0 1 6.945 9.733L5.267 8.055A0.4 0.4 0 0 1 5.15 7.772Z"
+                fill="#ffffff"
+              />
+              <path
+                class="art-piece"
+                style="--i: 3"
+                d="M5.15 10.55A0.4 0.4 0 0 1 5.55 10.15L6.45 10.15A0.4 0.4 0 0 1 6.85 10.55L6.85 11.45A0.4 0.4 0 0 1 6.45 11.85L5.55 11.85A0.4 0.4 0 0 1 5.15 11.45Z"
+                fill="#ffffff"
+              />
+              <path
+                class="art-piece"
+                style="--i: 4"
+                d="M7.15 12.55A0.4 0.4 0 0 1 7.55 12.15L10.45 12.15A0.4 0.4 0 0 1 10.85 12.55L10.85 13.45A0.4 0.4 0 0 1 10.45 13.85L7.55 13.85A0.4 0.4 0 0 1 7.15 13.45Z"
+                fill="#ffffff"
+              />
+            </g>
+          </svg>
         </div>
 
-        <h1 class="mt-9 font-display text-4xl font-semibold leading-[1.08] tracking-tight text-stone-900 sm:text-5xl">
-          Connect your coding agent to <span class="text-brand">Sevalla</span>.
-        </h1>
-
-        <p class="mt-5 max-w-md text-lg leading-relaxed text-stone-600">
-          A hosted Model Context Protocol endpoint for deploying apps, provisioning databases, and operating your
-          platform — straight from your editor.
-        </p>
-
-        <!-- Endpoint -->
-        <div class="mt-9">
-          <p class="mb-2.5 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Endpoint</p>
-          <button
-            type="button"
-            data-copy="https://mcp.sevalla.com/mcp"
-            aria-label="Copy endpoint URL"
-            class="copyable group flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white/70 px-4 py-3.5 text-left backdrop-blur hover:border-stone-300 hover:shadow-sm"
-          >
-            <code class="relative z-10 truncate font-mono text-sm font-semibold text-stone-800"
-              >https://mcp.sevalla.com/mcp</code
-            >
-            <span class="copy-target relative z-10 text-stone-400 group-hover:text-stone-700">
-              <svg
-                class="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="9" y="9" width="13" height="13" rx="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-            </span>
-          </button>
-          <div class="mt-3 flex flex-wrap gap-2">
-            <span class="rounded-full border border-stone-200 bg-white/60 px-3 py-1 text-xs font-medium text-stone-500">
-              Streamable HTTP
-            </span>
-            <span class="rounded-full border border-stone-200 bg-white/60 px-3 py-1 text-xs font-medium text-stone-500">
-              OAuth
-            </span>
-            <span class="rounded-full border border-stone-200 bg-white/60 px-3 py-1 text-xs font-medium text-stone-500">
-              200+ endpoints
-            </span>
-          </div>
-        </div>
-
-        <div class="mt-10 flex items-center gap-4 text-sm font-medium text-stone-500">
-          <a
-            href="https://docs.sevalla.com/quick-starts/coding-agents/overview"
-            target="_blank"
-            rel="noreferrer"
-            class="inline-flex items-center gap-1 transition hover:text-stone-900"
-          >
-            Documentation
-            <svg
-              class="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M7 17 17 7M7 7h10v10" />
+        <nav class="topbar" aria-label="Sevalla">
+          <a class="brand" href="https://sevalla.com" aria-label="Sevalla">
+            <svg class="lockup" viewBox="0 -1446.4 6495.16 2082.857" width="112.3" height="36" aria-hidden="true">
+              <g transform="translate(0 -1446.429) scale(115.71429)">
+                <path
+                  d="M11.6 0c2.24 0 3.36 0 4.216 0.436a4 4 0 0 1 1.748 1.748c0.436 0.856 0.436 1.976 0.436 4.216L18 11.6c0 2.24 0 3.36 -0.436 4.216a4 4 0 0 1 -1.748 1.748c-0.856 0.436 -1.976 0.436 -4.216 0.436L6.4 18c-2.24 0 -3.36 0 -4.216 -0.436a4 4 0 0 1 -1.748 -1.748c-0.436 -0.856 -0.436 -1.976 -0.436 -4.216L0 6.4c0 -2.24 0 -3.36 0.436 -4.216a4 4 0 0 1 1.748 -1.748c0.856 -0.436 1.976 -0.436 4.216 -0.436Z"
+                  fill="#ff5f00"
+                />
+                <path
+                  d="M7.15 4.55A0.4 0.4 0 0 1 7.55 4.15L10.45 4.15A0.4 0.4 0 0 1 10.85 4.55L10.85 5.45A0.4 0.4 0 0 1 10.45 5.85L7.55 5.85A0.4 0.4 0 0 1 7.15 5.45ZM11.15 6.55A0.4 0.4 0 0 1 11.55 6.15L12.45 6.15A0.4 0.4 0 0 1 12.85 6.55L12.85 7.45A0.4 0.4 0 0 1 12.45 7.85L11.55 7.85A0.4 0.4 0 0 1 11.15 7.45ZM5.15 6.55A0.4 0.4 0 0 1 5.55 6.15L6.45 6.15A0.4 0.4 0 0 1 6.85 6.55L6.85 7.75A0.4 0.4 0 0 0 7.25 8.15L10.772 8.15A0.4 0.4 0 0 1 11.055 8.267L12.733 9.945A0.4 0.4 0 0 1 12.85 10.228L12.85 11.45A0.4 0.4 0 0 1 12.45 11.85L11.55 11.85A0.4 0.4 0 0 1 11.15 11.45L11.15 10.25A0.4 0.4 0 0 0 10.75 9.85L7.228 9.85A0.4 0.4 0 0 1 6.945 9.733L5.267 8.055A0.4 0.4 0 0 1 5.15 7.772ZM5.15 10.55A0.4 0.4 0 0 1 5.55 10.15L6.45 10.15A0.4 0.4 0 0 1 6.85 10.55L6.85 11.45A0.4 0.4 0 0 1 6.45 11.85L5.55 11.85A0.4 0.4 0 0 1 5.15 11.45ZM7.15 12.55A0.4 0.4 0 0 1 7.55 12.15L10.45 12.15A0.4 0.4 0 0 1 10.85 12.55L10.85 13.45A0.4 0.4 0 0 1 10.45 13.85L7.55 13.85A0.4 0.4 0 0 1 7.15 13.45Z"
+                  fill="#ffffff"
+                />
+              </g>
+              <g transform="translate(2545.714 0)">
+                <path
+                  d="M361 12Q200 12 104.5 -58.5Q9 -129 0 -254L157 -254Q165 -184 218.5 -148Q272 -112 366 -112Q451 -112 494.5 -140.5Q538 -169 538 -224Q538 -267 509.5 -293.5Q481 -320 420 -332L256 -365Q146 -388 90.5 -443Q35 -498 35 -585Q35 -696 118 -759Q201 -822 345 -822Q490 -822 579.5 -756Q669 -690 681 -571L524 -571Q494 -701 336 -701Q265 -701 224.5 -674.5Q184 -648 184 -599Q184 -522 294 -499L464 -465Q578 -442 632.5 -385.5Q687 -329 687 -236Q687 -118 601.5 -53Q516 12 361 12ZM1073.22 12Q977.22 12 905.72 -26.5Q834.22 -65 795.72 -135.5Q757.22 -206 757.22 -302Q757.22 -398 795.22 -467.5Q833.22 -537 903.22 -574.5Q973.22 -612 1067.22 -612Q1159.22 -612 1225.22 -576.5Q1291.22 -541 1327.22 -474.5Q1363.22 -408 1363.22 -317L1363.22 -265L900.22 -265Q909.22 -189 953.72 -148.5Q998.22 -108 1072.22 -108Q1127.22 -108 1161.72 -128.5Q1196.22 -149 1210.22 -190L1360.22 -190Q1339.22 -95 1263.72 -41.5Q1188.22 12 1073.22 12ZM904.22 -366L1220.22 -366Q1212.22 -428 1172.72 -460.5Q1133.22 -493 1067.22 -493Q1002.22 -493 960.22 -460Q918.22 -427 904.22 -366ZM1631.22 0L1374.22 -600L1531.22 -600L1709.22 -168L1713.22 -168L1888.22 -600L2041.22 -600L1784.22 0ZM2275.11 11Q2170.11 11 2110.61 -40Q2051.11 -91 2051.11 -175Q2051.11 -263 2111.61 -311Q2172.11 -359 2286.11 -359L2469.11 -359L2469.11 -383Q2469.11 -493 2341.11 -493Q2232.11 -493 2210.11 -415L2061.11 -415Q2080.11 -511 2152.11 -561.5Q2224.11 -612 2341.11 -612Q2473.11 -612 2542.11 -552.5Q2611.11 -493 2611.11 -379L2611.11 -149L2682.11 -149L2682.11 0L2529.11 0L2529.11 -96L2487.11 -96Q2456.11 -45 2403.61 -17Q2351.11 11 2275.11 11ZM2297.11 -104Q2346.11 -104 2385.11 -122.5Q2424.11 -141 2446.61 -172.5Q2469.11 -204 2469.11 -243L2469.11 -257L2294.11 -257Q2193.11 -257 2193.11 -182Q2193.11 -145 2220.61 -124.5Q2248.11 -104 2297.11 -104ZM2784.78 0L2784.78 -840L2933.78 -840L2933.78 0ZM3071.11 0L3071.11 -840L3220.11 -840L3220.11 0ZM3542.44 11Q3437.44 11 3377.94 -40Q3318.44 -91 3318.44 -175Q3318.44 -263 3378.94 -311Q3439.44 -359 3553.44 -359L3736.44 -359L3736.44 -383Q3736.44 -493 3608.44 -493Q3499.44 -493 3477.44 -415L3328.44 -415Q3347.44 -511 3419.44 -561.5Q3491.44 -612 3608.44 -612Q3740.44 -612 3809.44 -552.5Q3878.44 -493 3878.44 -379L3878.44 -149L3949.44 -149L3949.44 0L3796.44 0L3796.44 -96L3754.44 -96Q3723.44 -45 3670.94 -17Q3618.44 11 3542.44 11ZM3564.44 -104Q3613.44 -104 3652.44 -122.5Q3691.44 -141 3713.94 -172.5Q3736.44 -204 3736.44 -243L3736.44 -257L3561.44 -257Q3460.44 -257 3460.44 -182Q3460.44 -145 3487.94 -124.5Q3515.44 -104 3564.44 -104Z"
+                  fill="currentColor"
+                />
+              </g>
+            </svg>
+            <svg class="wordmark" viewBox="0 -840 3949.44 852" width="120.5" height="26" aria-hidden="true">
+              <path
+                d="M361 12Q200 12 104.5 -58.5Q9 -129 0 -254L157 -254Q165 -184 218.5 -148Q272 -112 366 -112Q451 -112 494.5 -140.5Q538 -169 538 -224Q538 -267 509.5 -293.5Q481 -320 420 -332L256 -365Q146 -388 90.5 -443Q35 -498 35 -585Q35 -696 118 -759Q201 -822 345 -822Q490 -822 579.5 -756Q669 -690 681 -571L524 -571Q494 -701 336 -701Q265 -701 224.5 -674.5Q184 -648 184 -599Q184 -522 294 -499L464 -465Q578 -442 632.5 -385.5Q687 -329 687 -236Q687 -118 601.5 -53Q516 12 361 12ZM1073.22 12Q977.22 12 905.72 -26.5Q834.22 -65 795.72 -135.5Q757.22 -206 757.22 -302Q757.22 -398 795.22 -467.5Q833.22 -537 903.22 -574.5Q973.22 -612 1067.22 -612Q1159.22 -612 1225.22 -576.5Q1291.22 -541 1327.22 -474.5Q1363.22 -408 1363.22 -317L1363.22 -265L900.22 -265Q909.22 -189 953.72 -148.5Q998.22 -108 1072.22 -108Q1127.22 -108 1161.72 -128.5Q1196.22 -149 1210.22 -190L1360.22 -190Q1339.22 -95 1263.72 -41.5Q1188.22 12 1073.22 12ZM904.22 -366L1220.22 -366Q1212.22 -428 1172.72 -460.5Q1133.22 -493 1067.22 -493Q1002.22 -493 960.22 -460Q918.22 -427 904.22 -366ZM1631.22 0L1374.22 -600L1531.22 -600L1709.22 -168L1713.22 -168L1888.22 -600L2041.22 -600L1784.22 0ZM2275.11 11Q2170.11 11 2110.61 -40Q2051.11 -91 2051.11 -175Q2051.11 -263 2111.61 -311Q2172.11 -359 2286.11 -359L2469.11 -359L2469.11 -383Q2469.11 -493 2341.11 -493Q2232.11 -493 2210.11 -415L2061.11 -415Q2080.11 -511 2152.11 -561.5Q2224.11 -612 2341.11 -612Q2473.11 -612 2542.11 -552.5Q2611.11 -493 2611.11 -379L2611.11 -149L2682.11 -149L2682.11 0L2529.11 0L2529.11 -96L2487.11 -96Q2456.11 -45 2403.61 -17Q2351.11 11 2275.11 11ZM2297.11 -104Q2346.11 -104 2385.11 -122.5Q2424.11 -141 2446.61 -172.5Q2469.11 -204 2469.11 -243L2469.11 -257L2294.11 -257Q2193.11 -257 2193.11 -182Q2193.11 -145 2220.61 -124.5Q2248.11 -104 2297.11 -104ZM2784.78 0L2784.78 -840L2933.78 -840L2933.78 0ZM3071.11 0L3071.11 -840L3220.11 -840L3220.11 0ZM3542.44 11Q3437.44 11 3377.94 -40Q3318.44 -91 3318.44 -175Q3318.44 -263 3378.94 -311Q3439.44 -359 3553.44 -359L3736.44 -359L3736.44 -383Q3736.44 -493 3608.44 -493Q3499.44 -493 3477.44 -415L3328.44 -415Q3347.44 -511 3419.44 -561.5Q3491.44 -612 3608.44 -612Q3740.44 -612 3809.44 -552.5Q3878.44 -493 3878.44 -379L3878.44 -149L3949.44 -149L3949.44 0L3796.44 0L3796.44 -96L3754.44 -96Q3723.44 -45 3670.94 -17Q3618.44 11 3542.44 11ZM3564.44 -104Q3613.44 -104 3652.44 -122.5Q3691.44 -141 3713.94 -172.5Q3736.44 -204 3736.44 -243L3736.44 -257L3561.44 -257Q3460.44 -257 3460.44 -182Q3460.44 -145 3487.94 -124.5Q3515.44 -104 3564.44 -104Z"
+                fill="currentColor"
+              />
             </svg>
           </a>
-          <span class="text-stone-300">·</span>
-          <a
-            href="https://sevalla.com"
-            target="_blank"
-            rel="noreferrer"
-            class="inline-flex items-center gap-1 transition hover:text-stone-900"
-          >
-            sevalla.com
-            <svg
-              class="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M7 17 17 7M7 7h10v10" />
-            </svg>
-          </a>
-        </div>
-      </div>
+        </nav>
 
-      <!-- RIGHT — connect card -->
-      <div class="fade-up min-w-0" style="animation-delay: 120ms">
-        <div
-          class="overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-[0_24px_70px_-24px_rgba(31,26,22,0.22)]"
-        >
-          <!-- Segmented control -->
-          <div class="p-4 sm:p-5">
-            <div class="seg flex gap-1 rounded-2xl bg-stone-100/90 p-1" role="tablist" aria-label="Setup per client">
-              <span class="seg-slider" aria-hidden="true"></span>
-              <button
-                role="tab"
-                data-tab="claude"
-                data-name="Claude Code"
-                aria-selected="true"
-                aria-label="Claude Code"
-                title="Claude Code"
-                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
-              >
-                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path
-                    d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"
-                  />
-                </svg>
-              </button>
-              <button
-                role="tab"
-                data-tab="cursor"
-                data-name="Cursor"
-                aria-selected="false"
-                aria-label="Cursor"
-                title="Cursor"
-                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
-              >
-                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path
-                    d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23"
-                  />
-                </svg>
-              </button>
-              <button
-                role="tab"
-                data-tab="vscode"
-                data-name="VS Code"
-                aria-selected="false"
-                aria-label="VS Code"
-                title="VS Code"
-                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
-              >
-                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path
-                    d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"
-                  />
-                </svg>
-              </button>
-              <button
-                role="tab"
-                data-tab="codex"
-                data-name="Codex"
-                aria-selected="false"
-                aria-label="Codex"
-                title="Codex"
-                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
-              >
-                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path
-                    d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"
-                  />
-                </svg>
-              </button>
-              <button
-                role="tab"
-                data-tab="copilot"
-                data-name="GitHub Copilot"
-                aria-selected="false"
-                aria-label="GitHub Copilot"
-                title="GitHub Copilot"
-                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
-              >
-                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path
-                    d="M23.922 16.997C23.061 18.492 18.063 22.02 12 22.02 5.937 22.02.939 18.492.078 16.997A.641.641 0 0 1 0 16.741v-2.869a.883.883 0 0 1 .053-.22c.372-.935 1.347-2.292 2.605-2.656.167-.429.414-1.055.644-1.517a10.098 10.098 0 0 1-.052-1.086c0-1.331.282-2.499 1.132-3.368.397-.406.89-.717 1.474-.952C7.255 2.937 9.248 1.98 11.978 1.98c2.731 0 4.767.957 6.166 2.093.584.235 1.077.546 1.474.952.85.869 1.132 2.037 1.132 3.368 0 .368-.014.733-.052 1.086.23.462.477 1.088.644 1.517 1.258.364 2.233 1.721 2.605 2.656a.841.841 0 0 1 .053.22v2.869a.641.641 0 0 1-.078.256Zm-11.75-5.992h-.344a4.359 4.359 0 0 1-.355.508c-.77.947-1.918 1.492-3.508 1.492-1.725 0-2.989-.359-3.782-1.259a2.137 2.137 0 0 1-.085-.104L4 11.746v6.585c1.435.779 4.514 2.179 8 2.179 3.486 0 6.565-1.4 8-2.179v-6.585l-.098-.104s-.033.045-.085.104c-.793.9-2.057 1.259-3.782 1.259-1.59 0-2.738-.545-3.508-1.492a4.359 4.359 0 0 1-.355-.508Zm2.328 3.25c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Zm-5 0c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Zm3.313-6.185c.136 1.057.403 1.913.878 2.497.442.544 1.134.938 2.344.938 1.573 0 2.292-.337 2.657-.751.384-.435.558-1.15.558-2.361 0-1.14-.243-1.847-.705-2.319-.477-.488-1.319-.862-2.824-1.025-1.487-.161-2.192.138-2.533.529-.269.307-.437.808-.438 1.578v.021c0 .265.021.562.063.893Zm-1.626 0c.042-.331.063-.628.063-.894v-.02c-.001-.77-.169-1.271-.438-1.578-.341-.391-1.046-.69-2.533-.529-1.505.163-2.347.537-2.824 1.025-.462.472-.705 1.179-.705 2.319 0 1.211.175 1.926.558 2.361.365.414 1.084.751 2.657.751 1.21 0 1.902-.394 2.344-.938.475-.584.742-1.44.878-2.497Z"
-                  />
-                </svg>
-              </button>
-              <button
-                role="tab"
-                data-tab="droid"
-                data-name="Factory Droid"
-                aria-selected="false"
-                aria-label="Factory Droid"
-                title="Factory Droid"
-                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
-              >
-                <svg class="h-[18px] w-[18px]" viewBox="140 140 620 620" fill="currentColor" aria-hidden="true">
-                  <path
-                    d="M582.594 251.356C581.452 251.073 580.385 250.547 579.466 249.813C578.546 249.08 577.795 248.156 577.266 247.106C576.736 246.055 576.44 244.903 576.397 243.728C576.354 242.552 576.565 241.381 577.017 240.295C592.606 202.357 599.485 172.002 588.384 159.294C558.984 125.58 441.083 192.624 403.49 215.331C402.484 215.936 401.358 216.316 400.19 216.446C399.023 216.577 397.841 216.454 396.725 216.086C395.61 215.718 394.587 215.113 393.727 214.314C392.866 213.515 392.188 212.539 391.739 211.453C375.937 173.596 359.325 147.264 342.487 146.122C297.857 143.068 261.885 273.85 251.355 316.475C251.074 317.616 250.55 318.683 249.817 319.603C249.085 320.522 248.162 321.273 247.113 321.803C246.064 322.332 244.912 322.629 243.738 322.672C242.563 322.715 241.393 322.504 240.308 322.052C202.37 306.463 172.002 299.584 159.307 310.685C125.593 340.085 192.624 457.987 215.33 495.579C215.938 496.585 216.32 497.711 216.451 498.879C216.583 500.047 216.46 501.229 216.092 502.346C215.724 503.462 215.119 504.485 214.318 505.346C213.517 506.206 212.54 506.883 211.453 507.33C173.609 523.132 147.277 539.744 146.121 556.581C143.08 601.211 273.85 637.184 316.488 647.714C317.627 647.998 318.691 648.525 319.608 649.259C320.525 649.992 321.273 650.914 321.801 651.963C322.329 653.011 322.624 654.161 322.668 655.335C322.711 656.508 322.501 657.677 322.052 658.761C306.463 696.699 299.584 727.067 310.685 739.762C340.084 773.476 458 706.445 495.592 683.739C496.598 683.131 497.724 682.749 498.892 682.618C500.06 682.486 501.243 682.609 502.359 682.977C503.475 683.345 504.498 683.95 505.358 684.751C506.219 685.552 506.896 686.529 507.344 687.616C523.145 725.46 539.744 751.792 556.594 752.948C601.224 755.989 637.196 625.219 647.713 582.581C647.998 581.441 648.525 580.375 649.259 579.457C649.993 578.539 650.917 577.79 651.967 577.262C653.017 576.733 654.169 576.438 655.344 576.396C656.519 576.354 657.689 576.566 658.775 577.018C696.712 592.607 727.067 599.472 739.775 588.384C773.49 558.985 706.445 441.069 683.738 403.477C683.136 402.47 682.757 401.345 682.628 400.178C682.499 399.011 682.622 397.83 682.99 396.715C683.358 395.6 683.961 394.577 684.76 393.717C685.558 392.856 686.532 392.177 687.616 391.726C725.473 375.924 751.805 359.312 752.947 342.475C756.001 297.845 625.219 261.873 582.594 251.356ZM531.391 208.572C539.969 223.948 495.765 326.408 462.886 398.073C462.337 399.271 461.433 400.273 460.297 400.942C459.161 401.611 457.847 401.917 456.532 401.817C455.217 401.717 453.964 401.217 452.942 400.384C451.92 399.551 451.178 398.424 450.816 397.157C437.537 350.561 422.36 295.813 406.12 249.338C405.482 247.514 405.513 245.522 406.209 243.719C406.905 241.917 408.219 240.42 409.917 239.498C450.471 217.349 519.865 187.936 531.391 208.572ZM337.044 221.253C353.974 226.06 395.165 329.767 422.585 403.69C423.042 404.925 423.111 406.271 422.781 407.546C422.451 408.821 421.739 409.965 420.74 410.824C419.741 411.683 418.503 412.215 417.193 412.35C415.882 412.485 414.562 412.215 413.409 411.577C371.037 388.061 321.627 360.043 277.276 338.664C275.539 337.822 274.157 336.39 273.377 334.625C272.596 332.86 272.468 330.875 273.013 329.023C286.066 284.726 314.297 214.813 337.044 221.253ZM208.585 367.651C223.948 359.073 326.42 403.278 398.073 436.156C399.271 436.706 400.272 437.61 400.942 438.746C401.611 439.882 401.916 441.196 401.816 442.51C401.717 443.825 401.217 445.078 400.383 446.1C399.55 447.122 398.424 447.864 397.156 448.227C350.575 461.506 295.813 476.683 249.337 492.923C247.515 493.557 245.526 493.524 243.727 492.828C241.927 492.133 240.433 490.82 239.511 489.125C217.402 448.572 187.936 379.177 208.585 367.651ZM221.266 561.999C226.06 545.069 329.78 503.878 403.703 476.457C404.938 476 406.284 475.932 407.559 476.262C408.834 476.592 409.978 477.304 410.837 478.303C411.695 479.301 412.228 480.539 412.363 481.85C412.498 483.16 412.228 484.48 411.59 485.633C388.06 528.006 360.042 577.416 338.663 621.754C337.827 623.496 336.398 624.884 334.631 625.668C332.864 626.451 330.876 626.579 329.023 626.029C284.725 613.056 214.813 584.746 221.266 561.999ZM367.664 690.458C359.073 675.094 403.291 572.622 436.169 500.97C436.719 499.772 437.623 498.77 438.759 498.101C439.895 497.431 441.209 497.126 442.523 497.226C443.838 497.326 445.091 497.826 446.113 498.659C447.135 499.492 447.877 500.618 448.24 501.886C461.518 548.468 476.696 603.23 492.936 649.705C493.569 651.529 493.534 653.518 492.836 655.318C492.137 657.118 490.822 658.612 489.125 659.532C448.585 681.641 379.177 711.106 367.704 690.458H367.664ZM562.012 677.777C545.068 672.983 503.877 569.263 476.457 495.34C475.997 494.103 475.927 492.754 476.257 491.477C476.587 490.199 477.301 489.053 478.302 488.193C479.304 487.334 480.545 486.802 481.858 486.669C483.171 486.537 484.493 486.81 485.646 487.452C528.005 510.969 577.429 539 621.767 560.379C623.507 561.217 624.891 562.648 625.672 564.414C626.453 566.181 626.58 568.168 626.029 570.02C612.989 614.384 584.759 684.23 562.012 677.777ZM690.47 531.378C675.094 539.97 572.635 495.751 500.969 462.873C499.771 462.323 498.77 461.42 498.1 460.284C497.431 459.148 497.126 457.834 497.226 456.519C497.325 455.204 497.825 453.952 498.659 452.93C499.492 451.908 500.618 451.165 501.886 450.803C548.481 437.524 603.229 422.346 649.705 406.106C651.531 405.472 653.522 405.508 655.325 406.206C657.127 406.904 658.622 408.219 659.544 409.918C681.64 450.458 711.106 519.866 690.47 531.378ZM677.789 337.03C672.983 353.974 569.275 395.165 495.353 422.586C494.116 423.046 492.767 423.115 491.489 422.785C490.212 422.455 489.066 421.742 488.206 420.74C487.346 419.739 486.815 418.498 486.682 417.185C486.55 415.872 486.823 414.549 487.465 413.396C510.982 371.037 539 321.614 560.379 277.276C561.219 275.537 562.65 274.154 564.416 273.374C566.182 272.593 568.168 272.465 570.019 273.013C614.317 286.053 684.23 314.284 677.789 337.03Z"
-                  />
-                </svg>
-              </button>
-              <button
-                role="tab"
-                data-tab="opencode"
-                data-name="opencode"
-                aria-selected="false"
-                aria-label="opencode"
-                title="opencode"
-                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
-              >
-                <svg class="h-[18px] w-[18px]" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true">
-                  <path fill-rule="evenodd" clip-rule="evenodd" d="M384 416H128V96H384V416ZM320 160H192V352H320V160Z" />
-                  <path d="M320 224V352H192V224H320Z" />
-                </svg>
-              </button>
-              <button
-                role="tab"
-                data-tab="generic"
-                data-name="Any MCP client"
-                aria-selected="false"
-                aria-label="Other MCP clients"
-                title="Other"
-                class="seg-btn flex min-w-0 flex-1 items-center justify-center rounded-xl py-2.5"
-              >
-                <svg
-                  class="h-[18px] w-[18px]"
+        <div class="intro rise">
+          <p class="eyebrow">MCP server</p>
+          <h1><span>Connect your AI agent</span> <span class="quiet">to Sevalla.</span></h1>
+          <p class="lead">
+            Deploy, debug and manage your applications, databases and static sites from Claude, ChatGPT, Cursor, VS Code
+            or any other MCP client.
+          </p>
+
+          <div class="endpoint">
+            <p class="label" id="endpoint-label">Endpoint</p>
+            <button
+              type="button"
+              class="endpoint-copy"
+              data-copy="https://mcp.sevalla.com/mcp"
+              aria-describedby="endpoint-label"
+              aria-label="Copy https://mcp.sevalla.com/mcp"
+            >
+              <code>https://mcp.sevalla.com/mcp</code>
+              <span class="copy-icon"
+                ><svg
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -429,93 +964,260 @@
                   stroke-linejoin="round"
                   aria-hidden="true"
                 >
-                  <polyline points="16 18 22 12 16 6" />
-                  <polyline points="8 6 2 12 8 18" />
-                </svg>
-              </button>
-            </div>
+                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg
+              ></span>
+            </button>
+            <ul class="facts">
+              <li>Streamable HTTP</li>
+              <li>OAuth sign-in</li>
+              <li>27 tools</li>
+            </ul>
           </div>
 
-          <!-- Dynamic client heading + panels -->
-          <div class="px-5 pb-6 sm:px-6">
-            <h2 id="client-name" class="font-display text-lg font-semibold tracking-tight text-stone-900">
-              Claude Code
-            </h2>
+          <nav class="links" aria-label="Resources">
+            <a href="https://docs.sevalla.com/quick-starts/coding-agents/overview" target="_blank" rel="noreferrer"
+              >Documentation
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M7 17 17 7M7 7h10v10" /></svg
+            ></a>
+            <a href="https://api-docs.sevalla.com" target="_blank" rel="noreferrer"
+              >API reference
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M7 17 17 7M7 7h10v10" /></svg
+            ></a>
+            <a href="https://github.com/sevalla-hosting/mcp" target="_blank" rel="noreferrer"
+              >GitHub
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M7 17 17 7M7 7h10v10" /></svg
+            ></a>
+          </nav>
+        </div>
+      </div>
+    </header>
 
-            <div class="mt-3.5">
-              <div data-panel="claude" class="tab-panel">
-                <p class="mb-3 text-sm leading-relaxed text-stone-600">
-                  Run this in your terminal. Claude will prompt you to authenticate via OAuth the first time you use a
-                  Sevalla tool.
-                </p>
-                <div class="code-block" data-code="claude mcp add --transport http sevalla https://mcp.sevalla.com/mcp">
-                  <pre
-                    class="overflow-x-auto"
-                  ><code><span class="text-stone-500">$</span> claude mcp add --transport http <span class="text-orange-300">sevalla</span> https://mcp.sevalla.com/mcp</code></pre>
-                </div>
-              </div>
+    <main class="container setup rise">
+      <h2>Set up your client</h2>
+      <div class="card">
+        <div class="tabs" role="tablist" aria-label="Clients">
+          <button
+            type="button"
+            class="tab"
+            role="tab"
+            id="tab-claude"
+            aria-controls="panel-claude"
+            aria-selected="true"
+            tabindex="0"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"
+              /></svg
+            ><span>Claude Code</span>
+          </button>
+          <button
+            type="button"
+            class="tab"
+            role="tab"
+            id="tab-cursor"
+            aria-controls="panel-cursor"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23"
+              /></svg
+            ><span>Cursor</span>
+          </button>
+          <button
+            type="button"
+            class="tab"
+            role="tab"
+            id="tab-vscode"
+            aria-controls="panel-vscode"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"
+              /></svg
+            ><span>VS Code</span>
+          </button>
+          <button
+            type="button"
+            class="tab"
+            role="tab"
+            id="tab-codex"
+            aria-controls="panel-codex"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"
+              /></svg
+            ><span>Codex</span>
+          </button>
+          <button
+            type="button"
+            class="tab"
+            role="tab"
+            id="tab-copilot"
+            aria-controls="panel-copilot"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="M23.922 16.997C23.061 18.492 18.063 22.02 12 22.02 5.937 22.02.939 18.492.078 16.997A.641.641 0 0 1 0 16.741v-2.869a.883.883 0 0 1 .053-.22c.372-.935 1.347-2.292 2.605-2.656.167-.429.414-1.055.644-1.517a10.098 10.098 0 0 1-.052-1.086c0-1.331.282-2.499 1.132-3.368.397-.406.89-.717 1.474-.952C7.255 2.937 9.248 1.98 11.978 1.98c2.731 0 4.767.957 6.166 2.093.584.235 1.077.546 1.474.952.85.869 1.132 2.037 1.132 3.368 0 .368-.014.733-.052 1.086.23.462.477 1.088.644 1.517 1.258.364 2.233 1.721 2.605 2.656a.841.841 0 0 1 .053.22v2.869a.641.641 0 0 1-.078.256Zm-11.75-5.992h-.344a4.359 4.359 0 0 1-.355.508c-.77.947-1.918 1.492-3.508 1.492-1.725 0-2.989-.359-3.782-1.259a2.137 2.137 0 0 1-.085-.104L4 11.746v6.585c1.435.779 4.514 2.179 8 2.179 3.486 0 6.565-1.4 8-2.179v-6.585l-.098-.104s-.033.045-.085.104c-.793.9-2.057 1.259-3.782 1.259-1.59 0-2.738-.545-3.508-1.492a4.359 4.359 0 0 1-.355-.508Zm2.328 3.25c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Zm-5 0c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Zm3.313-6.185c.136 1.057.403 1.913.878 2.497.442.544 1.134.938 2.344.938 1.573 0 2.292-.337 2.657-.751.384-.435.558-1.15.558-2.361 0-1.14-.243-1.847-.705-2.319-.477-.488-1.319-.862-2.824-1.025-1.487-.161-2.192.138-2.533.529-.269.307-.437.808-.438 1.578v.021c0 .265.021.562.063.893Zm-1.626 0c.042-.331.063-.628.063-.894v-.02c-.001-.77-.169-1.271-.438-1.578-.341-.391-1.046-.69-2.533-.529-1.505.163-2.347.537-2.824 1.025-.462.472-.705 1.179-.705 2.319 0 1.211.175 1.926.558 2.361.365.414 1.084.751 2.657.751 1.21 0 1.902-.394 2.344-.938.475-.584.742-1.44.878-2.497Z"
+              /></svg
+            ><span>GitHub Copilot</span>
+          </button>
+          <button
+            type="button"
+            class="tab"
+            role="tab"
+            id="tab-droid"
+            aria-controls="panel-droid"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <svg viewBox="140 140 620 620" fill="currentColor" aria-hidden="true">
+              <path
+                d="M582.594 251.356C581.452 251.073 580.385 250.547 579.466 249.813C578.546 249.08 577.795 248.156 577.266 247.106C576.736 246.055 576.44 244.903 576.397 243.728C576.354 242.552 576.565 241.381 577.017 240.295C592.606 202.357 599.485 172.002 588.384 159.294C558.984 125.58 441.083 192.624 403.49 215.331C402.484 215.936 401.358 216.316 400.19 216.446C399.023 216.577 397.841 216.454 396.725 216.086C395.61 215.718 394.587 215.113 393.727 214.314C392.866 213.515 392.188 212.539 391.739 211.453C375.937 173.596 359.325 147.264 342.487 146.122C297.857 143.068 261.885 273.85 251.355 316.475C251.074 317.616 250.55 318.683 249.817 319.603C249.085 320.522 248.162 321.273 247.113 321.803C246.064 322.332 244.912 322.629 243.738 322.672C242.563 322.715 241.393 322.504 240.308 322.052C202.37 306.463 172.002 299.584 159.307 310.685C125.593 340.085 192.624 457.987 215.33 495.579C215.938 496.585 216.32 497.711 216.451 498.879C216.583 500.047 216.46 501.229 216.092 502.346C215.724 503.462 215.119 504.485 214.318 505.346C213.517 506.206 212.54 506.883 211.453 507.33C173.609 523.132 147.277 539.744 146.121 556.581C143.08 601.211 273.85 637.184 316.488 647.714C317.627 647.998 318.691 648.525 319.608 649.259C320.525 649.992 321.273 650.914 321.801 651.963C322.329 653.011 322.624 654.161 322.668 655.335C322.711 656.508 322.501 657.677 322.052 658.761C306.463 696.699 299.584 727.067 310.685 739.762C340.084 773.476 458 706.445 495.592 683.739C496.598 683.131 497.724 682.749 498.892 682.618C500.06 682.486 501.243 682.609 502.359 682.977C503.475 683.345 504.498 683.95 505.358 684.751C506.219 685.552 506.896 686.529 507.344 687.616C523.145 725.46 539.744 751.792 556.594 752.948C601.224 755.989 637.196 625.219 647.713 582.581C647.998 581.441 648.525 580.375 649.259 579.457C649.993 578.539 650.917 577.79 651.967 577.262C653.017 576.733 654.169 576.438 655.344 576.396C656.519 576.354 657.689 576.566 658.775 577.018C696.712 592.607 727.067 599.472 739.775 588.384C773.49 558.985 706.445 441.069 683.738 403.477C683.136 402.47 682.757 401.345 682.628 400.178C682.499 399.011 682.622 397.83 682.99 396.715C683.358 395.6 683.961 394.577 684.76 393.717C685.558 392.856 686.532 392.177 687.616 391.726C725.473 375.924 751.805 359.312 752.947 342.475C756.001 297.845 625.219 261.873 582.594 251.356ZM531.391 208.572C539.969 223.948 495.765 326.408 462.886 398.073C462.337 399.271 461.433 400.273 460.297 400.942C459.161 401.611 457.847 401.917 456.532 401.817C455.217 401.717 453.964 401.217 452.942 400.384C451.92 399.551 451.178 398.424 450.816 397.157C437.537 350.561 422.36 295.813 406.12 249.338C405.482 247.514 405.513 245.522 406.209 243.719C406.905 241.917 408.219 240.42 409.917 239.498C450.471 217.349 519.865 187.936 531.391 208.572ZM337.044 221.253C353.974 226.06 395.165 329.767 422.585 403.69C423.042 404.925 423.111 406.271 422.781 407.546C422.451 408.821 421.739 409.965 420.74 410.824C419.741 411.683 418.503 412.215 417.193 412.35C415.882 412.485 414.562 412.215 413.409 411.577C371.037 388.061 321.627 360.043 277.276 338.664C275.539 337.822 274.157 336.39 273.377 334.625C272.596 332.86 272.468 330.875 273.013 329.023C286.066 284.726 314.297 214.813 337.044 221.253ZM208.585 367.651C223.948 359.073 326.42 403.278 398.073 436.156C399.271 436.706 400.272 437.61 400.942 438.746C401.611 439.882 401.916 441.196 401.816 442.51C401.717 443.825 401.217 445.078 400.383 446.1C399.55 447.122 398.424 447.864 397.156 448.227C350.575 461.506 295.813 476.683 249.337 492.923C247.515 493.557 245.526 493.524 243.727 492.828C241.927 492.133 240.433 490.82 239.511 489.125C217.402 448.572 187.936 379.177 208.585 367.651ZM221.266 561.999C226.06 545.069 329.78 503.878 403.703 476.457C404.938 476 406.284 475.932 407.559 476.262C408.834 476.592 409.978 477.304 410.837 478.303C411.695 479.301 412.228 480.539 412.363 481.85C412.498 483.16 412.228 484.48 411.59 485.633C388.06 528.006 360.042 577.416 338.663 621.754C337.827 623.496 336.398 624.884 334.631 625.668C332.864 626.451 330.876 626.579 329.023 626.029C284.725 613.056 214.813 584.746 221.266 561.999ZM367.664 690.458C359.073 675.094 403.291 572.622 436.169 500.97C436.719 499.772 437.623 498.77 438.759 498.101C439.895 497.431 441.209 497.126 442.523 497.226C443.838 497.326 445.091 497.826 446.113 498.659C447.135 499.492 447.877 500.618 448.24 501.886C461.518 548.468 476.696 603.23 492.936 649.705C493.569 651.529 493.534 653.518 492.836 655.318C492.137 657.118 490.822 658.612 489.125 659.532C448.585 681.641 379.177 711.106 367.704 690.458H367.664ZM562.012 677.777C545.068 672.983 503.877 569.263 476.457 495.34C475.997 494.103 475.927 492.754 476.257 491.477C476.587 490.199 477.301 489.053 478.302 488.193C479.304 487.334 480.545 486.802 481.858 486.669C483.171 486.537 484.493 486.81 485.646 487.452C528.005 510.969 577.429 539 621.767 560.379C623.507 561.217 624.891 562.648 625.672 564.414C626.453 566.181 626.58 568.168 626.029 570.02C612.989 614.384 584.759 684.23 562.012 677.777ZM690.47 531.378C675.094 539.97 572.635 495.751 500.969 462.873C499.771 462.323 498.77 461.42 498.1 460.284C497.431 459.148 497.126 457.834 497.226 456.519C497.325 455.204 497.825 453.952 498.659 452.93C499.492 451.908 500.618 451.165 501.886 450.803C548.481 437.524 603.229 422.346 649.705 406.106C651.531 405.472 653.522 405.508 655.325 406.206C657.127 406.904 658.622 408.219 659.544 409.918C681.64 450.458 711.106 519.866 690.47 531.378ZM677.789 337.03C672.983 353.974 569.275 395.165 495.353 422.586C494.116 423.046 492.767 423.115 491.489 422.785C490.212 422.455 489.066 421.742 488.206 420.74C487.346 419.739 486.815 418.498 486.682 417.185C486.55 415.872 486.823 414.549 487.465 413.396C510.982 371.037 539 321.614 560.379 277.276C561.219 275.537 562.65 274.154 564.416 273.374C566.182 272.593 568.168 272.465 570.019 273.013C614.317 286.053 684.23 314.284 677.789 337.03Z"
+              /></svg
+            ><span>Factory Droid</span>
+          </button>
+          <button
+            type="button"
+            class="tab"
+            role="tab"
+            id="tab-opencode"
+            aria-controls="panel-opencode"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <svg viewBox="0 0 512 512" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M384 416H128V96H384V416ZM320 160H192V352H320V160Z" />
+              <path d="M320 224V352H192V224H320Z" /></svg
+            ><span>opencode</span>
+          </button>
+          <button
+            type="button"
+            class="tab"
+            role="tab"
+            id="tab-generic"
+            aria-controls="panel-generic"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" /></svg
+            ><span>Other clients</span>
+          </button>
+        </div>
 
-              <div data-panel="cursor" class="tab-panel hidden">
-                <p class="mb-3 text-sm leading-relaxed text-stone-600">
-                  Click the button to install, or add it to
-                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700"
-                    >.cursor/mcp.json</code
-                  >
-                  in your project. Cursor will prompt you to authenticate via OAuth on first use.
-                </p>
-                <a
-                  href="cursor://anysphere.cursor-deeplink/mcp/install?name=sevalla&config=eyJ1cmwiOiJodHRwczovL21jcC5zZXZhbGxhLmNvbS9tY3AifQ=="
-                  class="mb-4 inline-flex items-center gap-2 rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-700"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path
-                      d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23"
-                    />
-                  </svg>
-                  Add to Cursor
-                </a>
-                <div
-                  class="code-block"
-                  data-code='{
+        <section class="panel" id="panel-claude" role="tabpanel" aria-labelledby="tab-claude" tabindex="0">
+          <h3>Claude Code</h3>
+          <p>
+            Run this in your terminal, then run <code>/mcp</code> in Claude Code and choose Authenticate to sign in to
+            Sevalla.
+          </p>
+          <div class="code" data-code="claude mcp add --transport http sevalla https://mcp.sevalla.com/mcp">
+            <pre><code><span class="q">$</span> claude mcp add --transport http sevalla https://mcp.sevalla.com/mcp</code></pre>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-cursor" role="tabpanel" aria-labelledby="tab-cursor" tabindex="0" hidden>
+          <h3>Cursor</h3>
+          <p>
+            Install with the button, or add this to <code>.cursor/mcp.json</code> in your project. Cursor asks you to
+            sign in to Sevalla the first time it uses a tool.
+          </p>
+          <a
+            class="button"
+            href="cursor://anysphere.cursor-deeplink/mcp/install?name=sevalla&config=eyJ1cmwiOiJodHRwczovL21jcC5zZXZhbGxhLmNvbS9tY3AifQ=="
+            ><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23"
+              />
+            </svg>
+            Add to Cursor</a
+          >
+          <div
+            class="code"
+            data-code='{
   "mcpServers": {
     "sevalla": {
       "url": "https://mcp.sevalla.com/mcp"
     }
   }
 }'
-                >
-                  <pre class="overflow-x-auto"><code>{
-  <span class="text-sky-300">"mcpServers"</span>: {
-    <span class="text-sky-300">"sevalla"</span>: {
-      <span class="text-sky-300">"url"</span>: <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span>
+          >
+            <pre><code><span class="q">{
+  "mcpServers": {
+    "sevalla": {
+      "url":</span> "https://mcp.sevalla.com/mcp"<span class="q">
     }
   }
-}</code></pre>
-                </div>
-              </div>
+}</span></code></pre>
+          </div>
+        </section>
 
-              <div data-panel="vscode" class="tab-panel hidden">
-                <p class="mb-3 text-sm leading-relaxed text-stone-600">
-                  Click the button to install, or add it to
-                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700"
-                    >.vscode/mcp.json</code
-                  >
-                  in your workspace. VS Code will prompt you to authenticate via OAuth on first use.
-                </p>
-                <a
-                  href="vscode:mcp/install?%7B%22name%22%3A%22sevalla%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.sevalla.com%2Fmcp%22%7D"
-                  class="mb-4 inline-flex items-center gap-2 rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-700"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path
-                      d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"
-                    />
-                  </svg>
-                  Add to VS Code
-                </a>
-                <div
-                  class="code-block"
-                  data-code='{
+        <section class="panel" id="panel-vscode" role="tabpanel" aria-labelledby="tab-vscode" tabindex="0" hidden>
+          <h3>VS Code</h3>
+          <p>
+            Install with the button, or add this to <code>.vscode/mcp.json</code> in your workspace. VS Code asks you to
+            sign in to Sevalla the first time it uses a tool.
+          </p>
+          <a
+            class="button"
+            href="vscode:mcp/install?%7B%22name%22%3A%22sevalla%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.sevalla.com%2Fmcp%22%7D"
+            ><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"
+              />
+            </svg>
+            Add to VS Code</a
+          >
+          <div
+            class="code"
+            data-code='{
   "servers": {
     "sevalla": {
       "type": "http",
@@ -523,48 +1225,46 @@
     }
   }
 }'
-                >
-                  <pre class="overflow-x-auto"><code>{
-  <span class="text-sky-300">"servers"</span>: {
-    <span class="text-sky-300">"sevalla"</span>: {
-      <span class="text-sky-300">"type"</span>: <span class="text-orange-300">"http"</span>,
-      <span class="text-sky-300">"url"</span>: <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span>
+          >
+            <pre><code><span class="q">{
+  "servers": {
+    "sevalla": {
+      "type":</span> "http"<span class="q">,
+      "url":</span> "https://mcp.sevalla.com/mcp"<span class="q">
     }
   }
-}</code></pre>
-                </div>
-              </div>
+}</span></code></pre>
+          </div>
+        </section>
 
-              <div data-panel="codex" class="tab-panel hidden">
-                <p class="mb-3 text-sm leading-relaxed text-stone-600">
-                  Run this in your terminal, or add the block below to
-                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700"
-                    >~/.codex/config.toml</code
-                  >. Codex prompts you to authenticate via OAuth on first use.
-                </p>
-                <div class="code-block" data-code="codex mcp add sevalla --url https://mcp.sevalla.com/mcp">
-                  <pre
-                    class="overflow-x-auto"
-                  ><code><span class="text-stone-500">$</span> codex mcp add <span class="text-orange-300">sevalla</span> --url https://mcp.sevalla.com/mcp</code></pre>
-                </div>
-                <div
-                  class="code-block mt-3"
-                  data-code='[mcp_servers.sevalla]
+        <section class="panel" id="panel-codex" role="tabpanel" aria-labelledby="tab-codex" tabindex="0" hidden>
+          <h3>Codex</h3>
+          <p>
+            Run this in your terminal, or add the block below to <code>~/.codex/config.toml</code>. Codex asks you to
+            sign in to Sevalla the first time it uses a tool.
+          </p>
+          <div class="code" data-code="codex mcp add sevalla --url https://mcp.sevalla.com/mcp">
+            <pre><code><span class="q">$</span> codex mcp add sevalla --url https://mcp.sevalla.com/mcp</code></pre>
+          </div>
+          <div
+            class="code"
+            data-code='[mcp_servers.sevalla]
 url = "https://mcp.sevalla.com/mcp"'
-                >
-                  <pre class="overflow-x-auto"><code>[<span class="text-sky-300">mcp_servers.sevalla</span>]
-<span class="text-sky-300">url</span> = <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span></code></pre>
-                </div>
-              </div>
+          >
+            <pre><code>[mcp_servers.sevalla]
+<span class="q">url =</span> "https://mcp.sevalla.com/mcp"</code></pre>
+          </div>
+        </section>
 
-              <div data-panel="copilot" class="tab-panel hidden">
-                <p class="mb-3 text-sm leading-relaxed text-stone-600">
-                  Add to your MCP configuration for the Copilot coding agent (repository
-                  <span class="font-semibold">Settings → Copilot → Coding agent</span>).
-                </p>
-                <div
-                  class="code-block"
-                  data-code='{
+        <section class="panel" id="panel-copilot" role="tabpanel" aria-labelledby="tab-copilot" tabindex="0" hidden>
+          <h3>GitHub Copilot</h3>
+          <p>
+            Add this to the MCP configuration of the Copilot coding agent, in your repository's
+            <strong>Settings → Copilot → Coding agent</strong>.
+          </p>
+          <div
+            class="code"
+            data-code='{
   "mcpServers": {
     "sevalla": {
       "type": "http",
@@ -573,44 +1273,33 @@ url = "https://mcp.sevalla.com/mcp"'
     }
   }
 }'
-                >
-                  <pre class="overflow-x-auto"><code>{
-  <span class="text-sky-300">"mcpServers"</span>: {
-    <span class="text-sky-300">"sevalla"</span>: {
-      <span class="text-sky-300">"type"</span>: <span class="text-orange-300">"http"</span>,
-      <span class="text-sky-300">"url"</span>: <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span>,
-      <span class="text-sky-300">"tools"</span>: [<span class="text-orange-300">"*"</span>]
+          >
+            <pre><code><span class="q">{
+  "mcpServers": {
+    "sevalla": {
+      "type":</span> "http"<span class="q">,
+      "url":</span> "https://mcp.sevalla.com/mcp"<span class="q">,
+      "tools": [</span>"*"<span class="q">]
     }
   }
-}</code></pre>
-                </div>
-              </div>
+}</span></code></pre>
+          </div>
+        </section>
 
-              <div data-panel="droid" class="tab-panel hidden">
-                <p class="mb-3 text-sm leading-relaxed text-stone-600">
-                  Run this in your terminal. Then run
-                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700">/mcp</code> in Droid
-                  to complete the OAuth flow.
-                </p>
-                <div class="code-block" data-code="droid mcp add sevalla https://mcp.sevalla.com/mcp --type http">
-                  <pre
-                    class="overflow-x-auto"
-                  ><code><span class="text-stone-500">$</span> droid mcp add <span class="text-orange-300">sevalla</span> https://mcp.sevalla.com/mcp --type http</code></pre>
-                </div>
-              </div>
+        <section class="panel" id="panel-droid" role="tabpanel" aria-labelledby="tab-droid" tabindex="0" hidden>
+          <h3>Factory Droid</h3>
+          <p>Run this in your terminal, then run <code>/mcp</code> in Droid to sign in to Sevalla.</p>
+          <div class="code" data-code="droid mcp add sevalla https://mcp.sevalla.com/mcp --type http">
+            <pre><code><span class="q">$</span> droid mcp add sevalla https://mcp.sevalla.com/mcp --type http</code></pre>
+          </div>
+        </section>
 
-              <div data-panel="opencode" class="tab-panel hidden">
-                <p class="mb-3 text-sm leading-relaxed text-stone-600">
-                  Add to
-                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700">opencode.json</code>
-                  in your project or
-                  <code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-700"
-                    >~/.config/opencode/</code
-                  >.
-                </p>
-                <div
-                  class="code-block"
-                  data-code='{
+        <section class="panel" id="panel-opencode" role="tabpanel" aria-labelledby="tab-opencode" tabindex="0" hidden>
+          <h3>opencode</h3>
+          <p>Add this to <code>opencode.json</code> in your project or in <code>~/.config/opencode/</code>.</p>
+          <div
+            class="code"
+            data-code='{
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
     "sevalla": {
@@ -620,179 +1309,135 @@ url = "https://mcp.sevalla.com/mcp"'
     }
   }
 }'
-                >
-                  <pre class="overflow-x-auto"><code>{
-  <span class="text-sky-300">"$schema"</span>: <span class="text-orange-300">"https://opencode.ai/config.json"</span>,
-  <span class="text-sky-300">"mcp"</span>: {
-    <span class="text-sky-300">"sevalla"</span>: {
-      <span class="text-sky-300">"type"</span>: <span class="text-orange-300">"remote"</span>,
-      <span class="text-sky-300">"url"</span>: <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span>,
-      <span class="text-sky-300">"enabled"</span>: <span class="text-orange-300">true</span>
+          >
+            <pre><code><span class="q">{
+  "$schema":</span> "https://opencode.ai/config.json"<span class="q">,
+  "mcp": {
+    "sevalla": {
+      "type":</span> "remote"<span class="q">,
+      "url":</span> "https://mcp.sevalla.com/mcp"<span class="q">,
+      "enabled":</span> true<span class="q">
     }
   }
-}</code></pre>
-                </div>
-              </div>
+}</span></code></pre>
+          </div>
+        </section>
 
-              <div data-panel="generic" class="tab-panel hidden">
-                <p class="mb-3 text-sm leading-relaxed text-stone-600">
-                  Most MCP clients use this shape. Point any streamable-HTTP client at the endpoint — it authenticates
-                  over OAuth on first use.
-                </p>
-                <div
-                  class="code-block"
-                  data-code='{
+        <section class="panel" id="panel-generic" role="tabpanel" aria-labelledby="tab-generic" tabindex="0" hidden>
+          <h3>Other clients</h3>
+          <p>
+            Most MCP clients take this shape. Point any client that supports Streamable HTTP at the endpoint; it signs
+            in to Sevalla with OAuth on first use.
+          </p>
+          <div
+            class="code"
+            data-code='{
   "mcpServers": {
     "sevalla": {
       "url": "https://mcp.sevalla.com/mcp"
     }
   }
 }'
-                >
-                  <pre class="overflow-x-auto"><code>{
-  <span class="text-sky-300">"mcpServers"</span>: {
-    <span class="text-sky-300">"sevalla"</span>: {
-      <span class="text-sky-300">"url"</span>: <span class="text-orange-300">"https://mcp.sevalla.com/mcp"</span>
+          >
+            <pre><code><span class="q">{
+  "mcpServers": {
+    "sevalla": {
+      "url":</span> "https://mcp.sevalla.com/mcp"<span class="q">
     }
   }
-}</code></pre>
-                </div>
-              </div>
-            </div>
+}</span></code></pre>
           </div>
-        </div>
+        </section>
       </div>
     </main>
 
-    <!-- Toast -->
-    <div
-      id="toast"
-      class="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 translate-y-4 rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white opacity-0 shadow-xl transition-all duration-300"
-    >
-      Copied
-    </div>
+    <footer class="container">
+      <div class="footer"><a href="https://sevalla.com">sevalla.com</a></div>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">Copied</div>
 
     <script>
-      const showToast = () => {
-        const t = document.getElementById('toast')
-        t.classList.remove('opacity-0', 'translate-y-4')
-        t.classList.add('opacity-100', 'translate-y-0')
-        setTimeout(() => {
-          t.classList.add('opacity-0', 'translate-y-4')
-          t.classList.remove('opacity-100', 'translate-y-0')
-        }, 1600)
-      }
+      const copyIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>'
+      const checkIcon =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>'
 
-      const copy = async (text) => {
+      const toast = document.getElementById('toast')
+      let toastTimer
+      const timers = new WeakMap()
+
+      const copy = async (text, target, icon) => {
         try {
           await navigator.clipboard.writeText(text)
-          showToast()
         } catch {
-          /* clipboard unavailable */
+          return
         }
-      }
-
-      const copyIcon =
-        '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>'
-      const checkIcon =
-        '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>'
-
-      // Shared ripple effect, emanating from the click point
-      const spawnRipple = (el, x, y) => {
-        const rect = el.getBoundingClientRect()
-        const size = Math.max(rect.width, rect.height)
-        const ripple = document.createElement('span')
-        ripple.className = 'ripple'
-        ripple.style.width = ripple.style.height = `${size}px`
-        ripple.style.left = `${x - rect.left - size / 2}px`
-        ripple.style.top = `${y - rect.top - size / 2}px`
-        el.appendChild(ripple)
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() => {
-            ripple.style.transform = 'scale(1)'
-            ripple.style.opacity = '0'
-          }),
+        toast.classList.add('show')
+        clearTimeout(toastTimer)
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 1600)
+        target.classList.add('copied')
+        icon.innerHTML = checkIcon
+        clearTimeout(timers.get(target))
+        timers.set(
+          target,
+          setTimeout(() => {
+            target.classList.remove('copied')
+            icon.innerHTML = copyIcon
+          }, 1300),
         )
-        setTimeout(() => ripple.remove(), 850)
       }
 
-      // Endpoint button: whole-box click → copy + ripple + check swap
-      document.querySelectorAll('.copyable[data-copy]').forEach((btn) => {
-        const target = btn.querySelector('.copy-target')
-        const original = target ? target.innerHTML : ''
-        let t
-        btn.addEventListener('click', (e) => {
-          copy(btn.dataset.copy)
-          spawnRipple(btn, e.clientX, e.clientY)
-          btn.classList.add('copied')
-          if (target) target.innerHTML = checkIcon
-          clearTimeout(t)
-          t = setTimeout(() => {
-            btn.classList.remove('copied')
-            if (target) target.innerHTML = original
-          }, 1300)
-        })
+      document.querySelectorAll('[data-copy]').forEach((button) => {
+        const icon = button.querySelector('.copy-icon')
+        button.addEventListener('click', () => copy(button.dataset.copy, button, icon))
       })
 
-      // Code blocks: whole-box click to copy + ripple
-      document.querySelectorAll('.code-block').forEach((block) => {
-        block.setAttribute('role', 'button')
-        block.setAttribute('tabindex', '0')
-        block.setAttribute('aria-label', 'Copy to clipboard')
-
-        const icon = document.createElement('span')
-        icon.className = 'copy-btn pointer-events-none absolute right-3 top-[17px] text-stone-400'
-        icon.innerHTML = copyIcon
-        block.appendChild(icon)
-
-        let resetTimer
-        const trigger = (x, y) => {
-          copy(block.dataset.code)
-          spawnRipple(block, x, y)
-          block.classList.add('copied')
-          icon.innerHTML = checkIcon
-          clearTimeout(resetTimer)
-          resetTimer = setTimeout(() => {
-            block.classList.remove('copied')
-            icon.innerHTML = copyIcon
-          }, 1300)
-        }
-
-        block.addEventListener('click', (e) => trigger(e.clientX, e.clientY))
-        block.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            const rect = block.getBoundingClientRect()
-            trigger(rect.left + rect.width / 2, rect.top + rect.height / 2)
+      document.querySelectorAll('.code').forEach((block) => {
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = 'copy'
+        button.setAttribute('aria-label', 'Copy')
+        button.innerHTML = copyIcon
+        block.append(button)
+        block.addEventListener('click', () => {
+          if (!getSelection()?.toString()) {
+            copy(block.dataset.code, block, button)
           }
         })
       })
 
-      // Segmented control: tabs + sliding indicator + dynamic heading
-      const tabs = [...document.querySelectorAll('.seg-btn')]
-      const panels = [...document.querySelectorAll('.tab-panel')]
-      const slider = document.querySelector('.seg-slider')
-      const clientName = document.getElementById('client-name')
-
-      const moveSlider = (btn) => {
-        slider.style.width = `${btn.offsetWidth}px`
-        slider.style.transform = `translateX(${btn.offsetLeft}px)`
+      const tabs = [...document.querySelectorAll('[role="tab"]')]
+      const select = (tab, focus) => {
+        for (const other of tabs) {
+          const selected = other === tab
+          other.setAttribute('aria-selected', String(selected))
+          other.tabIndex = selected ? 0 : -1
+          document.getElementById(other.getAttribute('aria-controls')).hidden = !selected
+        }
+        if (focus) {
+          tab.focus()
+        }
+        tab.scrollIntoView({ block: 'nearest', inline: 'nearest' })
       }
-
-      const selectTab = (btn) => {
-        tabs.forEach((t) => t.setAttribute('aria-selected', String(t === btn)))
-        panels.forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== btn.dataset.tab))
-        clientName.textContent = btn.dataset.name
-        moveSlider(btn)
-      }
-
-      tabs.forEach((tab) => tab.addEventListener('click', () => selectTab(tab)))
-
-      const active = () => document.querySelector('.seg-btn[aria-selected="true"]')
-      const sync = () => moveSlider(active())
-      requestAnimationFrame(() => requestAnimationFrame(sync))
-      window.addEventListener('load', sync)
-      window.addEventListener('resize', sync)
+      const steps = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => select(tab, false))
+        tab.addEventListener('keydown', (event) => {
+          const next =
+            event.key in steps
+              ? tabs[(index + steps[event.key] + tabs.length) % tabs.length]
+              : event.key === 'Home'
+                ? tabs[0]
+                : event.key === 'End'
+                  ? tabs[tabs.length - 1]
+                  : undefined
+          if (next) {
+            event.preventDefault()
+            select(next, true)
+          }
+        })
+      })
     </script>
   </body>
 </html>
