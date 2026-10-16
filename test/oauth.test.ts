@@ -76,9 +76,12 @@ describe('encrypt / decrypt', () => {
   })
 
   it('rejects tampered ciphertext', () => {
-    const encrypted = encrypt('secret')
-    const tampered = encrypted.slice(0, -2) + 'XX'
-    throws(() => decrypt(tampered))
+    const original = Buffer.from(encrypt('secret'), 'base64url')
+    for (const index of [0, 12, original.length - 1]) {
+      const tampered = Buffer.from(original)
+      tampered[index] ^= 0x01
+      throws(() => decrypt(tampered.toString('base64url')), `byte ${index}`)
+    }
   })
 })
 
