@@ -253,6 +253,18 @@ describe('e2e protocol: HTTP surface', () => {
     ok(svg.headers.get('content-security-policy')?.includes("default-src 'none'"))
     ok((await svg.text()).startsWith('<svg'))
   })
+
+  it('serves the link preview image the landing page names', async () => {
+    const page = await (await fetch(`${h.baseUrl}/`)).text()
+    ok(page.includes('<meta property="og:image" content="https://mcp.sevalla.com/og.png" />'))
+    const png = await fetch(`${h.baseUrl}/og.png`)
+    strictEqual(png.status, 200)
+    strictEqual(png.headers.get('content-type'), 'image/png')
+    const bytes = new Uint8Array(await png.arrayBuffer())
+    deepStrictEqual([...bytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10])
+    const view = new DataView(bytes.buffer, bytes.byteOffset)
+    deepStrictEqual([view.getUint32(16), view.getUint32(20)], [2400, 1260])
+  })
 })
 
 describe('e2e protocol: stdio', () => {
