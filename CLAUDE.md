@@ -36,7 +36,7 @@ pnpm check:code         # Full check: tsc + oxlint + oxfmt
 - `src/assets/` — the Sevalla icon (`/icon.png`, `/icon.svg`) referenced from `serverInfo.icons` and `server.json`.
 - `src/sevalla/client.ts` — Sevalla API client: `/v3` URL pinning, Bearer auth, timeouts, response size limit, `ApiError`, `readOnly()` view.
 - `src/sevalla/operations.json` — generated, trimmed snapshot of the v3 OpenAPI spec. Never edit by hand; run `pnpm sync:operations`.
-- `src/sevalla/operations.ts` — the reviewed operation table: class (read/create/update/delete), dedicated tool mapping, unavailable operations, env var value fields, path/query validation, keyword search.
+- `src/sevalla/operations.ts` — the reviewed operation table: class (read/create/update/delete), dedicated tool mapping, unavailable operations, env var value fields, path/query validation, keyword search (with synonyms for everyday words such as app, copy, stop and region).
 - `src/tools/define.ts` — `readTool` / `writeTool` and the annotation presets.
 - `src/tools/*.ts` — tool groups: `services`, `deployments`, `observability`, `configuration`, `create`, `docs`, `api` (generic tools); `index.ts` registers them and holds the server instructions.
 - `scripts/sync-operations.ts` — builds `operations.json` from https://api.sevalla.com/v3/openapi.json.

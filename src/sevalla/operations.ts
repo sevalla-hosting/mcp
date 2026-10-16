@@ -253,6 +253,9 @@ const STOP_WORDS = new Set([
   'get',
   'with',
   'by',
+  'into',
+  'other',
+  'another',
   'v3',
 ])
 
@@ -265,11 +268,40 @@ export const tokenize = (text: string): string[] =>
 
 const stem = (token: string) => token.replace(/(ies|es|s)$/, (m) => (m === 'ies' ? 'y' : ''))
 
+const SYNONYMS: Record<string, string[]> = {
+  app: ['application'],
+  db: ['database'],
+  add: ['create'],
+  remove: ['delete'],
+  copy: ['clone'],
+  duplicate: ['clone'],
+  move: ['clone', 'add'],
+  stop: ['suspend', 'cancel'],
+  pause: ['suspend'],
+  abort: ['cancel'],
+  start: ['activate', 'trigger'],
+  resume: ['activate'],
+  restart: ['trigger'],
+  deploy: ['deployment'],
+  worker: ['process'],
+  job: ['process'],
+  region: ['cluster'],
+  location: ['cluster'],
+}
+
+const bodyFields = (op: Operation) => Object.keys((op.body?.properties ?? {}) as Record<string, unknown>)
+
 const SEARCH_INDEX = OPERATIONS.map((op) => ({
   op,
-  primary: new Set([...tokenize(op.id), ...tokenize(op.summary), ...tokenize(op.tag)].map(stem)),
-  secondary: new Set([...tokenize(op.path), ...tokenize(op.description)].map(stem)),
+  primary: new Set([...tokenize(op.id), ...tokenize(op.summary)].map(stem)),
+  tagged: new Set(tokenize(op.tag).map(stem)),
+  secondary: new Set(
+    [...tokenize(op.path), ...tokenize(op.description), ...bodyFields(op).flatMap(tokenize)].map(stem),
+  ),
 }))
+
+const termScore = ({ primary, tagged, secondary }: (typeof SEARCH_INDEX)[number], term: string) =>
+  (primary.has(term) ? 3 : tagged.has(term) ? 2 : 0) + (secondary.has(term) ? 1 : 0)
 
 export interface SearchOptions {
   query?: string
@@ -279,18 +311,25 @@ export interface SearchOptions {
 }
 
 export const searchOperations = ({ query, cls, tag, limit = 5 }: SearchOptions): Operation[] => {
-  const terms = [...new Set(tokenize(query ?? '').map(stem))]
+  const concepts = [...new Set(tokenize(query ?? '').map(stem))].map((term) => [
+    term,
+    ...(SYNONYMS[term] ?? []).map(stem),
+  ])
   return SEARCH_INDEX.filter(
     ({ op }) => (!cls || op.class === cls) && (!tag || op.tag.toLowerCase() === tag.toLowerCase()),
   )
-    .map(({ op, primary, secondary }) => ({
-      op,
-      score: terms.reduce((sum, t) => sum + (primary.has(t) ? 3 : 0) + (secondary.has(t) ? 1 : 0), 0),
+    .map((entry) => ({
+      op: entry.op,
+      score: concepts.reduce((sum, terms) => sum + Math.max(...terms.map((term) => termScore(entry, term))), 0),
+      words: entry.primary.size,
     }))
-    .filter(({ score }) => terms.length === 0 || score > 0)
+    .filter(({ score }) => concepts.length === 0 || score > 0)
     .sort(
       (a, b) =>
-        b.score - a.score || Number(isExecutable(b.op)) - Number(isExecutable(a.op)) || a.op.id.localeCompare(b.op.id),
+        b.score - a.score ||
+        (concepts.length > 0 ? a.words - b.words : 0) ||
+        Number(isExecutable(b.op)) - Number(isExecutable(a.op)) ||
+        a.op.id.localeCompare(b.op.id),
     )
     .slice(0, limit)
     .map(({ op }) => op)

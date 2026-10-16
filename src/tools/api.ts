@@ -7,6 +7,7 @@ import {
   fillPath,
   getOperation,
   isExecutable,
+  OPERATIONS,
   searchOperations,
   secretFieldsFor,
   unavailableReason,
@@ -90,7 +91,7 @@ const CLASS_NAMES: Record<OperationClass, string> = {
 export const apiSearch = readTool({
   name: 'sevalla_api_search',
   title: 'Search Sevalla API operations',
-  description: `Searches the Sevalla API v3 operations (reference: ${API_DOCS_URL}) by keywords and returns their IDs, parameters, body fields and the tool that runs each. operation_id returns one operation in full. It reads the API reference, not the account.`,
+  description: `Searches all ${OPERATIONS.length} operations of the Sevalla API v3 (reference: ${API_DOCS_URL}), including those behind dedicated tools, by keywords and returns their IDs, parameters, body fields and the tool that runs each. ${OPERATIONS.filter(isExecutable).length} have no dedicated tool, among them the clone, suspend, cancel and promote operations. operation_id returns one operation in full. It reads the API reference, not the account.`,
   input: z
     .object({
       query: z.string().min(1).max(200).optional().describe('Keywords, e.g. "load balancer destination".'),

@@ -220,4 +220,23 @@ describe('searchOperations', () => {
     ok(results.length > 0 && results.length <= 3)
     ok(results.every((o) => o.class === 'delete'))
   })
+
+  it('matches everyday words for the API terms', () => {
+    const top = (query: string) => searchOperations({ query })[0]?.id
+    strictEqual(top('duplicate app'), 'cloneApplicationV3')
+    strictEqual(top('move application to another region'), 'cloneApplicationV3')
+    strictEqual(top('move app to project'), 'addServiceToProjectV3')
+    strictEqual(top('pause app'), 'suspendApplicationV3')
+    strictEqual(top('stop deployment'), 'cancelDeploymentV3')
+    strictEqual(top('resume database'), 'activateDatabaseV3')
+    strictEqual(top('restart app'), 'triggerDeploymentV3')
+    strictEqual(top('restart database'), 'restartDatabaseV3')
+    strictEqual(top('add worker to app'), 'createProcessV3')
+    strictEqual(top('region'), 'listClustersV3')
+  })
+
+  it('ranks the operation the query names above longer names that contain it', () => {
+    strictEqual(searchOperations({ query: 'create application' })[0]?.id, 'createApplicationV3')
+    strictEqual(searchOperations({ query: 'list apps' })[0]?.id, 'listApplicationsV3')
+  })
 })

@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { ApiError, type SevallaClient } from '../sevalla/client.ts'
-import { API_DOCS_URL, OperationInputError } from '../sevalla/operations.ts'
+import { API_DOCS_URL, isExecutable, OperationInputError, OPERATIONS } from '../sevalla/operations.ts'
 import { API_TOOLS } from './api.ts'
 import { CONFIGURATION_TOOLS } from './configuration.ts'
 import { CREATE_TOOLS } from './create.ts'
@@ -27,7 +27,7 @@ export const serverInstructions = (): string =>
     'Resources belong to the company of the connected API key and can be grouped into projects. Identifiers are UUIDs; list_services returns them together with names.',
     'Deployments run asynchronously: trigger_deployment and rollback_deployment return a deployment whose progress get_deployment reports. Environment variable and scaling changes apply at the next deployment.',
     'Environment variable values are withheld; their keys and scoping are listed.',
-    `API operations without a dedicated tool are reachable through sevalla_api_search and the sevalla_api_read, sevalla_api_create, sevalla_api_update and sevalla_api_delete tools (reference: ${API_DOCS_URL}).`,
+    `Of the ${OPERATIONS.length} Sevalla API operations, ${OPERATIONS.filter(isExecutable).length} have no dedicated tool and run through sevalla_api_read, sevalla_api_create, sevalla_api_update and sevalla_api_delete. A task often has an operation of its own that the closest dedicated tool only approximates: cloning an application rather than creating a new one, suspending it rather than scaling its processes to zero, cancelling a deployment rather than rolling it back, or promoting a pipeline rather than redeploying. sevalla_api_search finds operations by keyword across the whole API, dedicated tools included, and names the tool that runs each (reference: ${API_DOCS_URL}).`,
   ].join('\n\n')
 
 const SECURITY_SCHEMES = [{ type: 'oauth2', scopes: ['mcp:tools'] }]
