@@ -143,7 +143,7 @@ const run = async () => {
   const next = serialize(buildSnapshot((await res.json()) as Json))
   if (process.argv.includes('--check')) {
     const current = readFileSync(OUTPUT, 'utf8')
-    if (current !== next) {
+    if (JSON.stringify(JSON.parse(current)) !== JSON.stringify(JSON.parse(next))) {
       const before = new Set((JSON.parse(current).operations as Json[]).map((o) => JSON.stringify(o)))
       const after = (JSON.parse(next).operations as Json[]).filter((o) => !before.has(JSON.stringify(o)))
       const removed = (JSON.parse(current).operations as Json[]).filter(

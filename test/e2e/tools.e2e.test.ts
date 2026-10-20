@@ -219,7 +219,7 @@ describe('e2e: logs and metrics', () => {
     ])
   })
 
-  it('searches runtime logs case-insensitively', async () => {
+  it('searches runtime logs on the server', async () => {
     const res = await mcp.call('search_runtime_logs', {
       application_id: IDS.app,
       search: 'SLOW QUERY',
@@ -227,7 +227,9 @@ describe('e2e: logs and metrics', () => {
     })
     ok(res.text.includes('Slow query took 1200ms'))
     strictEqual(res.text.split('\n').length, 2)
-    strictEqual(last('getApplicationRuntimeLogsV3').query.limit, '1000')
+    const query = last('getApplicationRuntimeLogsV3').query
+    strictEqual(query.search, 'SLOW QUERY')
+    strictEqual(query.limit, '100')
   })
 
   it('filters access logs by status class, method and path on the server', async () => {
@@ -506,15 +508,16 @@ describe('e2e: create tools', () => {
     strictEqual(h.api.forOperation('createEnvironmentVariableV3').length, 0)
   })
 
-  it('asks for a version while the API cannot list them', async () => {
+  it('uses the newest version of the engine in the cluster when none is given', async () => {
     const res = await mcp.call('create_database', {
       display_name: 'X DB',
       type: 'redis',
       cluster_id: IDS.cluster,
       size_id: IDS.dbSize,
     })
-    strictEqual(res.isError, true)
-    ok(res.text.includes('version is required'))
+    strictEqual(res.isError, false)
+    deepStrictEqual(last('listDatabaseVersionsV3').query, { cluster_id: IDS.cluster, type: 'redis' })
+    strictEqual((last('createDatabaseV3').body as Record<string, string>).version, '8.0')
   })
 })
 

@@ -66,7 +66,7 @@ describe('e2e: every executable operation dispatches correctly', () => {
   const executable = OPERATIONS.filter((op) => isExecutable(op))
 
   it('covers every operation without a dedicated tool except sign-in plumbing and the terminal', () => {
-    strictEqual(executable.length, 165)
+    strictEqual(executable.length, 169)
   })
 
   for (const op of executable) {

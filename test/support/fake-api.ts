@@ -442,7 +442,7 @@ export const startFakeApi = async (): Promise<FakeApi> => {
         logEntry(-200_000, 'WARN', 'Slow query took 1200ms'),
         logEntry(-100_000, 'ERROR', 'TypeError: cannot read properties of undefined (reading "id")'),
         logEntry(-90_000, 'error', 'Database connection lost'),
-      ]
+      ].filter((e) => !query.search || e.message.toLowerCase().includes(query.search.toLowerCase()))
       return { body: applyLogFilters(entries, query.filters).slice(-Number(query.limit ?? 1000)) }
     },
     getApplicationAccessLogsV3: ({ query }) => ({
@@ -656,6 +656,12 @@ export const startFakeApi = async (): Promise<FakeApi> => {
     }),
     listDatabaseResourceTypesV3: () => ({
       body: [{ id: IDS.dbSize, name: 'db-1', cpu_limit: 500, memory_limit: 1024, storage_limit: 10240 }],
+    }),
+    listDatabaseVersionsV3: () => ({
+      body: [
+        { type: 'postgresql', versions: ['16', '17', '18'] },
+        { type: 'redis', versions: ['7.2', '8.0'] },
+      ],
     }),
     createApplicationV3: ({ body }) => ({
       status: 201,
