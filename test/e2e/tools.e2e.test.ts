@@ -276,6 +276,20 @@ describe('e2e: logs and metrics', () => {
     strictEqual(invalid.isError, true)
   })
 
+  it('searches access logs by client details on this server', async () => {
+    const res = await mcp.call('search_access_logs', {
+      service_type: 'application',
+      service_id: IDS.app,
+      search: '1.2.3.5',
+    })
+    const lines = res.text.split('\n').slice(1)
+    strictEqual(lines.length, 1)
+    ok(lines[0]?.includes('502 POST /api/orders'))
+    const query = last('getApplicationAccessLogsV3').query
+    strictEqual(query.search, undefined)
+    strictEqual(query.limit, '1000')
+  })
+
   it('explains responses that exceed the size limit', async () => {
     h.api.override('getApplicationRuntimeLogsV3', () => ({
       body: Array.from({ length: 6000 }, (_, i) => ({ id: String(i), message: 'x'.repeat(1000), severity: 'INFO' })),
@@ -538,6 +552,7 @@ describe('e2e: generic API tools', () => {
     const dedicated = await mcp.call('sevalla_api_search', { operation_id: 'triggerDeploymentV3' })
     strictEqual(dedicated.json.tool, 'trigger_deployment')
     ok(dedicated.json.body)
+    deepStrictEqual(dedicated.json.permissions, ['APP:UPDATE'])
     const blocked = await mcp.call('sevalla_api_search', { operation_id: 'createDeviceCodeV3' })
     ok(blocked.json.tool.startsWith('unavailable:'))
     const apiKeys = await mcp.call('sevalla_api_search', { operation_id: 'createApiKeyV3' })

@@ -63,6 +63,7 @@ const describeOperation = (op: Operation, full: boolean) => {
     summary: op.summary,
     http: `${op.method} ${op.path}`,
     ...(full ? { description: op.description } : {}),
+    ...(full && op.permissions ? { permissions: op.permissions } : {}),
     ...(pathParams.length > 0
       ? { path_params: pathParams.map((p) => fieldLine(p.name, { ...p.schema, pattern: undefined }, true)) }
       : {}),
