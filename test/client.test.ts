@@ -2,7 +2,15 @@ import { after, before, describe, it } from 'node:test'
 import { deepStrictEqual, ok, rejects, strictEqual, throws } from 'node:assert'
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { ApiError, buildUrl, createSevallaClient, encodePath, readOnly, withSignal } from '../src/sevalla/client.ts'
+import {
+  ApiError,
+  buildUrl,
+  createSevallaClient,
+  encodePath,
+  mcpClientName,
+  readOnly,
+  withSignal,
+} from '../src/sevalla/client.ts'
 import { startFakeApi, TOKENS, type FakeApi } from './support/fake-api.ts'
 
 let api: FakeApi
@@ -57,6 +65,16 @@ describe('encodePath', () => {
   })
 })
 
+describe('mcpClientName', () => {
+  it('prefixes the client with mcp: and keeps it printable ASCII within 200 characters', () => {
+    strictEqual(mcpClientName('claude-code/2.1.0'), 'mcp:claude-code/2.1.0')
+    strictEqual(mcpClientName(' Cursor/1.7 (darwin)\u00e9\n '), 'mcp:Cursor/1.7 (darwin)')
+    strictEqual(mcpClientName(undefined), 'mcp:unknown')
+    strictEqual(mcpClientName('\u00e9'), 'mcp:unknown')
+    strictEqual(mcpClientName('x'.repeat(300)).length, 200)
+  })
+})
+
 describe('createSevallaClient', () => {
   it('sends the bearer token and JSON body', async () => {
     const client = createSevallaClient({ token: TOKENS.valid, baseUrl: api.url })
@@ -65,6 +83,13 @@ describe('createSevallaClient', () => {
     strictEqual(call?.headers.authorization, `Bearer ${TOKENS.valid}`)
     strictEqual(call?.headers['content-type'], 'application/json')
     deepStrictEqual(call?.body, { display_name: 'Shop' })
+    strictEqual(call?.headers['x-sevalla-client'], undefined)
+  })
+
+  it('names the calling client in x-sevalla-client when one is set', async () => {
+    const client = createSevallaClient({ token: TOKENS.valid, baseUrl: api.url, client: 'mcp:claude-code/2.1.0' })
+    await client.get('/projects')
+    strictEqual(api.requests.at(-1)?.headers['x-sevalla-client'], 'mcp:claude-code/2.1.0')
   })
 
   it('turns API errors into ApiError with code and message', async () => {

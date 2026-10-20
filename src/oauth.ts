@@ -9,7 +9,7 @@ import {
   isClientMetadataUrl,
   resolveClientMetadata,
 } from './client-metadata.ts'
-import { getApiBaseUrl } from './sevalla/client.ts'
+import { getApiBaseUrl, mcpClientName, SEVALLA_CLIENT_HEADER } from './sevalla/client.ts'
 
 export const MCP_PATHS = ['/mcp'] as const
 
@@ -354,7 +354,10 @@ export const createOAuthRouter = () => {
 
     const deviceCodeRes = await fetch(`${getApiBaseUrl()}/v3/auth/device-codes`, {
       method: 'POST',
-      headers: trustedClientHeaders(c),
+      headers: {
+        ...trustedClientHeaders(c),
+        [SEVALLA_CLIENT_HEADER]: mcpClientName(describeClient(q.redirect_uri, client.name)),
+      },
     })
     if (!deviceCodeRes.ok) {
       return c.json({ error: 'device_code_request_failed' }, 502)

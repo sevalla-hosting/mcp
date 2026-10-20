@@ -60,7 +60,7 @@ export const startHarness = async (): Promise<Harness> => {
       era === 'modern' ? { versionNegotiation: { mode: { pin: MODERN_PROTOCOL_VERSION } } } : {},
     )
     const transport = new StreamableHTTPClientTransport(new URL(`${baseUrl}/mcp`), {
-      requestInit: { headers: { authorization: `Bearer ${token}` } },
+      requestInit: { headers: { authorization: `Bearer ${token}`, 'user-agent': 'sevalla-e2e/1.0.0' } },
     })
     await client.connect(transport)
     const session: McpSession = {

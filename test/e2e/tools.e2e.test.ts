@@ -59,6 +59,11 @@ describe('e2e: list_services', () => {
     strictEqual(res.json.databases.items[0].size, 'db-1')
   })
 
+  it('names the MCP client from its User-Agent in x-sevalla-client', async () => {
+    await mcp.call('list_services', { type: 'application' })
+    strictEqual(last('listApplicationsV3').headers['x-sevalla-client'], 'mcp:sevalla-e2e/1.0.0')
+  })
+
   it('passes filters upstream and filters static sites by name locally', async () => {
     const res = await mcp.call('list_services', { search: 'market', limit: 10 })
     strictEqual(res.json.static_sites.total, 1)

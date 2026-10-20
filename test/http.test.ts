@@ -216,6 +216,7 @@ describe('HTTP: OAuth sign-in flow', () => {
     const create = api.forOperation('createDeviceCodeV3')[0]
     strictEqual(create?.headers['x-sevalla-service-token'], 'service-secret')
     strictEqual(create?.headers['x-sevalla-client-ip'], '203.0.113.7')
+    strictEqual(create?.headers['x-sevalla-client'], 'mcp:localhost')
     const callback = new URL(consent.searchParams.get('callback') ?? '')
     await app.request(`${callback.pathname}${callback.search}`, {
       redirect: 'manual',
@@ -365,6 +366,7 @@ describe('HTTP: OAuth sign-in with client ID metadata documents', () => {
     deepStrictEqual(fetched, [CLAUDE_ID])
     const consent = new URL(res.headers.get('location') ?? '')
     strictEqual(consent.searchParams.get('name'), 'Sevalla MCP (claude.ai - Claude)')
+    strictEqual(api.forOperation('createDeviceCodeV3')[0]?.headers['x-sevalla-client'], 'mcp:claude.ai - Claude')
     const callback = new URL(consent.searchParams.get('callback') ?? '')
     const back = new URL(
       (await app.request(`${callback.pathname}${callback.search}`, { redirect: 'manual' })).headers.get('location') ??
