@@ -219,7 +219,7 @@ describe('e2e: logs and metrics', () => {
     ])
   })
 
-  it('searches runtime logs case-insensitively', async () => {
+  it('searches runtime logs on the server', async () => {
     const res = await mcp.call('search_runtime_logs', {
       application_id: IDS.app,
       search: 'SLOW QUERY',
@@ -227,7 +227,9 @@ describe('e2e: logs and metrics', () => {
     })
     ok(res.text.includes('Slow query took 1200ms'))
     strictEqual(res.text.split('\n').length, 2)
-    strictEqual(last('getApplicationRuntimeLogsV3').query.limit, '1000')
+    const query = last('getApplicationRuntimeLogsV3').query
+    strictEqual(query.search, 'SLOW QUERY')
+    strictEqual(query.limit, '100')
   })
 
   it('filters access logs by status class, method and path on the server', async () => {
@@ -272,6 +274,20 @@ describe('e2e: logs and metrics', () => {
       status: 'teapot',
     })
     strictEqual(invalid.isError, true)
+  })
+
+  it('searches access logs by client details on this server', async () => {
+    const res = await mcp.call('search_access_logs', {
+      service_type: 'application',
+      service_id: IDS.app,
+      search: '1.2.3.5',
+    })
+    const lines = res.text.split('\n').slice(1)
+    strictEqual(lines.length, 1)
+    ok(lines[0]?.includes('502 POST /api/orders'))
+    const query = last('getApplicationAccessLogsV3').query
+    strictEqual(query.search, undefined)
+    strictEqual(query.limit, '1000')
   })
 
   it('explains responses that exceed the size limit', async () => {
@@ -506,15 +522,16 @@ describe('e2e: create tools', () => {
     strictEqual(h.api.forOperation('createEnvironmentVariableV3').length, 0)
   })
 
-  it('asks for a version while the API cannot list them', async () => {
+  it('uses the newest version of the engine in the cluster when none is given', async () => {
     const res = await mcp.call('create_database', {
       display_name: 'X DB',
       type: 'redis',
       cluster_id: IDS.cluster,
       size_id: IDS.dbSize,
     })
-    strictEqual(res.isError, true)
-    ok(res.text.includes('version is required'))
+    strictEqual(res.isError, false)
+    deepStrictEqual(last('listDatabaseVersionsV3').query, { cluster_id: IDS.cluster, type: 'redis' })
+    strictEqual((last('createDatabaseV3').body as Record<string, string>).version, '8.0')
   })
 })
 
@@ -535,6 +552,7 @@ describe('e2e: generic API tools', () => {
     const dedicated = await mcp.call('sevalla_api_search', { operation_id: 'triggerDeploymentV3' })
     strictEqual(dedicated.json.tool, 'trigger_deployment')
     ok(dedicated.json.body)
+    deepStrictEqual(dedicated.json.permissions, ['APP:UPDATE'])
     const blocked = await mcp.call('sevalla_api_search', { operation_id: 'createDeviceCodeV3' })
     ok(blocked.json.tool.startsWith('unavailable:'))
     const apiKeys = await mcp.call('sevalla_api_search', { operation_id: 'createApiKeyV3' })

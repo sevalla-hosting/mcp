@@ -1,6 +1,5 @@
 import { z } from 'zod'
 import { encodePath, type ReadOnlyClient } from '../sevalla/client.ts'
-import { getOperation } from '../sevalla/operations.ts'
 import { readTool, ToolInputError } from './define.ts'
 import {
   formatApiErrorShort,
@@ -19,9 +18,6 @@ import { serviceType, timeWindow, uuid, type ApiRecord } from './schemas.ts'
 
 const MAX_CLIENT_SCAN = 1000
 
-const supportsServerSearch = (operationId: string) =>
-  getOperation(operationId)?.params.some((p) => p.in === 'query' && p.name === 'search') ?? false
-
 export interface LogFilter {
   key: string
   operator: string
@@ -31,22 +27,21 @@ export interface LogFilter {
 
 interface LogQuery {
   path: string
-  operationId: string
   window: TimeWindow
   limit: number
   filters: LogFilter[]
   search?: string
+  searchAttributes: boolean
 }
 
 const fetchLogs = async (api: ReadOnlyClient, q: LogQuery) => {
-  const serverSearch = q.search !== undefined && supportsServerSearch(q.operationId)
-  const clientSearch = q.search !== undefined && !serverSearch
+  const clientSearch = q.search !== undefined && q.searchAttributes
   const query = {
     from: q.window.from,
     to: q.window.to,
     limit: clientSearch ? MAX_CLIENT_SCAN : q.limit,
     filters: q.filters.length > 0 ? JSON.stringify(q.filters) : undefined,
-    search: serverSearch ? q.search : undefined,
+    search: clientSearch ? undefined : q.search,
   }
   const fetched = sortLogs(await api.get<LogEntry[]>(q.path, query))
   const matching = clientSearch ? fetched.filter((e) => matchesText(e, q.search)) : fetched
@@ -72,7 +67,12 @@ export const searchRuntimeLogs = readTool({
       application_id: uuid('Application ID (list_services).'),
       ...timeWindow,
       severity: z.enum(SEVERITIES).optional().describe('Only entries with this severity.'),
-      search: z.string().min(1).max(200).optional().describe('Only entries containing this text (case-insensitive).'),
+      search: z
+        .string()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe('Only entries whose message contains this text (case-insensitive).'),
       limit: z.number().int().min(1).max(500).default(100).describe('Maximum entries returned.'),
     })
     .strict(),
@@ -80,13 +80,13 @@ export const searchRuntimeLogs = readTool({
     const window = resolveWindow(args)
     const result = await fetchLogs(api, {
       path: encodePath`/applications/${args.application_id}/runtime-logs`,
-      operationId: 'getApplicationRuntimeLogsV3',
       window,
       limit: args.limit,
       filters: args.severity
         ? [{ key: 'severity', operator: 'IS_IN', values: [args.severity, args.severity.toLowerCase()] }]
         : [],
       search: args.search,
+      searchAttributes: false,
     })
     const header = logHeader('Runtime logs', window, result.shown.length, result.matching.length, result.capped)
     return toolResult([header, ...result.shown.map(formatLogLine)].join('\n'))
@@ -165,11 +165,11 @@ export const searchAccessLogs = readTool({
       path: isApplication
         ? encodePath`/applications/${args.service_id}/access-logs`
         : encodePath`/static-sites/${args.service_id}/access-logs`,
-      operationId: isApplication ? 'getApplicationAccessLogsV3' : 'getStaticSiteAccessLogsV3',
       window,
       limit: args.limit,
       filters,
       search: args.search,
+      searchAttributes: true,
     })
     const header = logHeader('Access logs', window, result.shown.length, result.matching.length, result.capped)
     return toolResult([header, ...result.shown.map(formatAccessLine)].join('\n'))

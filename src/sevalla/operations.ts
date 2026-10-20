@@ -51,6 +51,7 @@ export const ADDITIVE_OPERATIONS = new Set([
   'addApplicationDomainV3',
   'addStaticSiteDomainV3',
   'cloneApplicationV3',
+  'createApplicationInternalConnectionV3',
   'createApplicationPrivatePortV3',
   'createApplicationV3',
   'createDatabaseBackupV3',

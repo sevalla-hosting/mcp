@@ -1,7 +1,6 @@
 import { randomInt } from 'node:crypto'
 import { z } from 'zod'
 import { ApiError, encodePath, type SevallaClient } from '../sevalla/client.ts'
-import { getOperation } from '../sevalla/operations.ts'
 import { ToolInputError, writeTool } from './define.ts'
 import { formatApiErrorShort, omitEmpty, toolResult } from './format.ts'
 import { listAllVariables } from './configuration.ts'
@@ -179,11 +178,6 @@ const resolveVersion = async (
   if (version) {
     return version
   }
-  if (!getOperation('listDatabaseVersionsV3')) {
-    throw new ToolInputError(
-      'version is required, for example 17 for PostgreSQL or 8.0 for MySQL. Supported versions depend on the engine and region.',
-    )
-  }
   const options = await api.get<{ type: string; versions: string[] }[]>('/resources/database-versions', {
     cluster_id: clusterId,
     type,
@@ -215,7 +209,12 @@ export const createDatabase = writeTool('create', {
     .object({
       display_name: displayName('database'),
       type: z.enum(DATABASE_TYPES).describe('Database engine.'),
-      version: z.string().min(1).max(20).optional().describe('Engine version, e.g. 17 for PostgreSQL.'),
+      version: z
+        .string()
+        .min(1)
+        .max(20)
+        .optional()
+        .describe('Engine version, e.g. 17 for PostgreSQL. Default: the newest in the cluster.'),
       cluster_id: clusterId,
       size_id: uuid('Size ID (get_platform_options).'),
       db_name: z
