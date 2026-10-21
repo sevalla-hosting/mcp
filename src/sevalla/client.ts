@@ -6,6 +6,13 @@ const DEFAULT_MAX_RESPONSE_BYTES = 5 * 1024 * 1024
 
 export const RESPONSE_TOO_LARGE = 'response_too_large'
 
+export const SEVALLA_CLIENT_HEADER = 'x-sevalla-client'
+
+const MAX_CLIENT_LENGTH = 200
+
+export const mcpClientName = (name: string | undefined): string =>
+  `mcp:${name?.replace(/[^\x20-\x7e]/g, '').trim() || 'unknown'}`.slice(0, MAX_CLIENT_LENGTH)
+
 export const getApiBaseUrl = () => process.env.SEVALLA_API_URL || DEFAULT_API_URL
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
@@ -49,6 +56,7 @@ export type ReadOnlyClient = Pick<SevallaClient, 'get'>
 
 export interface ClientOptions {
   token: string
+  client?: string
   baseUrl?: string
   timeoutMs?: number
   maxResponseBytes?: number
@@ -133,6 +141,9 @@ export const createSevallaClient = (options: ClientOptions): SevallaClient => {
     const headers: Record<string, string> = {
       authorization: `Bearer ${options.token}`,
       accept: 'application/json',
+    }
+    if (options.client) {
+      headers[SEVALLA_CLIENT_HEADER] = options.client
     }
     if (init.body !== undefined) {
       headers['content-type'] = 'application/json'

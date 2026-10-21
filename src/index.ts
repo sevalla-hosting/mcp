@@ -13,7 +13,7 @@ import { serveStdio } from '@modelcontextprotocol/server/stdio'
 import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 import { createOAuthRouter, getBearerAuthChallenge, getPublicUrl, resolveBearerToken } from './oauth.ts'
-import { ApiError, createSevallaClient } from './sevalla/client.ts'
+import { ApiError, createSevallaClient, mcpClientName } from './sevalla/client.ts'
 import { registerTools, serverInstructions } from './tools/index.ts'
 
 const INDEX_HTML = readFileSync(new URL('./index.html', import.meta.url), 'utf8')
@@ -90,14 +90,14 @@ export const serverInfo = () => {
   }
 }
 
-export const createMcpServer = (token: string): McpServer => {
+export const createMcpServer = (token: string, client?: string): McpServer => {
   const server = new McpServer(serverInfo(), {
     capabilities: { tools: { listChanged: false } },
     instructions: serverInstructions(),
     cacheHints: { 'tools/list': LIST_CACHE_HINT, 'server/discover': LIST_CACHE_HINT },
     maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS,
   })
-  registerTools(server, createSevallaClient({ token }))
+  registerTools(server, createSevallaClient({ token, client }))
   return server
 }
 
@@ -108,14 +108,17 @@ const tokenFrom = (authInfo: AuthInfo | undefined): string => {
   return authInfo.token
 }
 
-const modernHandler = createMcpHandler(({ authInfo }) => createMcpServer(tokenFrom(authInfo)), {
+const serverFor = (authInfo: AuthInfo | undefined): McpServer =>
+  createMcpServer(tokenFrom(authInfo), authInfo?.extra?.client as string | undefined)
+
+const modernHandler = createMcpHandler(({ authInfo }) => serverFor(authInfo), {
   legacy: 'reject',
   maxRequestBodySize: MAX_REQUEST_BODY_BYTES,
   onerror: (err) => console.error('MCP request rejected:', err.message),
 })
 
 const serveLegacyRequest = async (request: Request, authInfo: AuthInfo): Promise<Response> => {
-  const server = createMcpServer(authInfo.token)
+  const server = serverFor(authInfo)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
@@ -226,7 +229,12 @@ app.post('/mcp', async (c) => {
     return unauthorized(c, 'The Sevalla API key is invalid, expired or revoked', 'invalid_token')
   }
 
-  const authInfo: AuthInfo = { token, clientId: 'sevalla-mcp', scopes: ['mcp:tools'] }
+  const authInfo: AuthInfo = {
+    token,
+    clientId: 'sevalla-mcp',
+    scopes: ['mcp:tools'],
+    extra: { client: mcpClientName(c.req.header('user-agent')) },
+  }
   try {
     const request = c.req.raw
     if (await isLegacyRequest(request, undefined, { maxRequestBodySize: MAX_REQUEST_BODY_BYTES })) {
@@ -246,7 +254,7 @@ const startServer = async () => {
 
   if (IS_STDIO) {
     const token = process.env.SEVALLA_API_KEY || ''
-    serveStdio(() => createMcpServer(token), {
+    serveStdio(() => createMcpServer(token, mcpClientName('stdio')), {
       onerror: (err) => console.error('MCP stdio error:', err.message),
     })
     console.log('Sevalla MCP server running in stdio mode')
