@@ -14,7 +14,7 @@ pnpm start              # Run server (node src/index.ts)
 pnpm test               # Unit + e2e tests (node:test), then the e2e suites again as a 2025-era client
 pnpm test:unit          # test/*.test.ts
 pnpm test:e2e           # test/e2e in both protocol eras: real HTTP server, MCP SDK client, fake Sevalla API
-pnpm test:live          # Live checks: known clients' metadata documents; API smoke test with SEVALLA_E2E_API_KEY
+pnpm test:live          # Live checks: known clients' metadata documents; API smoke test and fake API fidelity with SEVALLA_E2E_API_KEY
 pnpm test:coverage      # Tests with coverage (src/** only)
 pnpm sync:operations    # Regenerate src/sevalla/operations.json from the live OpenAPI spec
 pnpm check:operations   # Fail if the live spec drifted from operations.json

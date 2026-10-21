@@ -449,24 +449,24 @@ export const startFakeApi = async (): Promise<FakeApi> => {
       body: applyLogFilters(
         [
           logEntry(-50_000, 'INFO', 'GET /health 200', {
-            edgeResponseStatus: 200,
+            edgeResponseStatus: '200',
             clientRequestMethod: 'GET',
             clientRequestPath: '/health',
             clientIP: '1.2.3.4',
           }),
           logEntry(-40_000, 'INFO', 'POST /api/orders 502', {
-            edgeResponseStatus: 502,
+            edgeResponseStatus: '502',
             clientRequestMethod: 'POST',
             clientRequestPath: '/api/orders',
             clientIP: '1.2.3.5',
           }),
           logEntry(-30_000, 'INFO', 'GET /api/orders/1 404', {
-            edgeResponseStatus: 404,
+            edgeResponseStatus: '404',
             clientRequestMethod: 'GET',
             clientRequestPath: '/api/orders/1',
             clientIP: '1.2.3.6',
           }),
-        ],
+        ].map((entry) => ({ ...entry, tags: { idApp: IDS.app, isPreview: 'false' } })),
         query.filters,
       ).slice(-Number(query.limit ?? 1000)),
     }),
@@ -491,8 +491,8 @@ export const startFakeApi = async (): Promise<FakeApi> => {
     }),
     getApplicationStatusCodesV3: () => ({
       body: [
-        { time: iso(-120_000), value: { '200': 10, '500': 1 } },
-        { time: iso(-60_000), value: { '200': 5 } },
+        { time: iso(-120_000), value: { '1xx': 0, '2xx': 10, '3xx': 0, '4xx': 0, '5xx': 1 } },
+        { time: iso(-60_000), value: { '1xx': 0, '2xx': 5, '3xx': 0, '4xx': 0, '5xx': 0 } },
       ],
     }),
     getProcessCpuUsageV3: () => ({ body: series([0.1, 0.5, 0.25]) }),
