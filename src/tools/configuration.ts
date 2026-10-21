@@ -243,7 +243,7 @@ export const scaleProcess = writeTool('update', {
   idempotent: true,
   openWorld: false,
   description:
-    'Sets how a Sevalla application process scales: fixed instances or an autoscaling range, and/or its machine size. Bigger sizes and more instances cost more. By default the application restarts from its current build so the change applies now.',
+    'Sets how a Sevalla application process scales: fixed instances or an autoscaling range, and/or its machine size. Bigger sizes and more instances cost more. By default the application restarts from its current build so the change applies now. The start command, port, health checks and cron schedule are other fields of updateProcessV3, which sevalla_api_update runs.',
   input: z
     .object({
       application_id: uuid('Application ID (list_services).'),
@@ -317,7 +317,7 @@ export const addDomain = writeTool('create', {
   name: 'add_domain',
   title: 'Add Sevalla custom domain',
   description:
-    'Adds a custom domain to a Sevalla application or static site and returns the DNS records to create at the DNS provider. Sevalla then verifies them and issues SSL; get_application or get_static_site shows the status.',
+    'Adds a custom domain to a Sevalla application or static site and returns the DNS records to create at the DNS provider. Sevalla then verifies them and issues SSL, or serves a custom certificate when one is given; get_application or get_static_site shows the status.',
   input: z
     .object({
       service_type: serviceType,
@@ -327,17 +327,37 @@ export const addDomain = writeTool('create', {
         .regex(HOSTNAME, 'must be a hostname such as app.example.com')
         .describe('Domain, e.g. app.example.com.'),
       wildcard: z.boolean().default(false).describe('Also serve all subdomains.'),
+      ssl_certificate: z
+        .string()
+        .max(32_000)
+        .regex(/-----BEGIN CERTIFICATE-----/, 'must be a PEM certificate')
+        .optional()
+        .describe('Custom SSL certificate (PEM, with its chain) instead of an issued one.'),
+      ssl_private_key: z
+        .string()
+        .max(32_000)
+        .regex(/-----BEGIN [A-Z ]*PRIVATE KEY-----/, 'must be a PEM private key')
+        .optional()
+        .describe('PEM private key of ssl_certificate; not returned.'),
     })
     .strict(),
-  run: async ({ service_type, service_id, domain, wildcard }, { api }) => {
+  run: async ({ service_type, service_id, domain, wildcard, ssl_certificate, ssl_private_key }, { api }) => {
+    if ((ssl_certificate === undefined) !== (ssl_private_key === undefined)) {
+      throw new ToolInputError('ssl_certificate and ssl_private_key are both required when either is given.')
+    }
     const path =
       service_type === 'application'
         ? encodePath`/applications/${service_id}/domains`
         : encodePath`/static-sites/${service_id}/domains`
-    const created = await api.post<ApiRecord>(path, {
-      domain_name: domain.replace(/^\*\./, ''),
-      is_wildcard: wildcard || domain.startsWith('*.'),
-    })
+    const created = await api.post<ApiRecord>(
+      path,
+      omitEmpty({
+        domain_name: domain.replace(/^\*\./, ''),
+        is_wildcard: wildcard || domain.startsWith('*.'),
+        custom_ssl_cert: ssl_certificate,
+        custom_ssl_key: ssl_private_key,
+      }),
+    )
     return toolResult({
       domain: summarizeDomain(created),
       next: 'The domain becomes active once these DNS records exist and verification completes.',
