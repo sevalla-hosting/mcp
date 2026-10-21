@@ -242,7 +242,8 @@ docker run -p 3000:3000 -e OAUTH_SECRET=<base64url 32 bytes> sevalla-mcp
 pnpm dev                # Hot reload (node --watch)
 pnpm test               # Unit and end-to-end tests (node:test), e2e as both 2026-07-28 and 2025 clients
 pnpm test:e2e           # End-to-end tests: real HTTP server, MCP SDK client, fake Sevalla API
-pnpm test:live          # Live checks: client metadata documents; API smoke test with SEVALLA_E2E_API_KEY
+pnpm test:live          # Live checks: client metadata documents; API smoke test and fake API fidelity with SEVALLA_E2E_API_KEY
+pnpm eval               # Evals through headless Claude Code against the fake API (see evals/)
 pnpm check:code         # tsc + oxlint + oxfmt
 pnpm sync:operations    # Regenerate src/sevalla/operations.json from the live API spec
 pnpm check:operations   # Fail if the live API spec drifted from the snapshot

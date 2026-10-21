@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { createServer, type IncomingHttpHeaders, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { OPERATIONS, type Operation } from '../../src/sevalla/operations.ts'
@@ -154,6 +155,69 @@ export interface FakeApi {
   forOperation: (_operationId: string) => RecordedRequest[]
 }
 
+const webProcess = (): Record<string, any> => ({
+  id: IDS.process,
+  app_id: IDS.app,
+  key: 'web',
+  type: 'web',
+  display_name: 'Web',
+  entrypoint: 'npm start',
+  port: 8080,
+  is_ingress_enabled: true,
+  ingress_protocol: 'http',
+  scaling_strategy: { type: 'manual', config: { instanceCount: 2 } },
+  resource_type_id: IDS.processSize,
+  resource_type_name: 'standard-1',
+  cpu_limit: 1000,
+  memory_limit: 2048,
+  schedule: null,
+  time_zone: null,
+  concurrency_policy: null,
+  active_deadline_seconds: null,
+  job_start_policy: null,
+  liveness_probe: {},
+  readiness_probe: {},
+  internal_hostname: 'web.api-prod.svc',
+  created_at: iso(-1e7),
+  updated_at: iso(-1e6),
+})
+
+const workerApp = {
+  name: 'worker-prod',
+  display_name: 'Worker',
+  source: 'dockerImage',
+  status: 'deploymentFailed',
+  auto_deploy: false,
+  is_suspended: true,
+  is_cdn_enabled: false,
+  git_type: null,
+  repo_url: null,
+  default_branch: null,
+  docker_image: 'ghcr.io/acme/worker:1',
+  build_type: 'dockerImage',
+}
+
+const workerProcess = (): Record<string, any> => ({
+  ...webProcess(),
+  id: '44444444-4444-4444-8444-555555555555',
+  app_id: IDS.app2,
+  key: 'worker',
+  type: 'worker',
+  display_name: 'Worker',
+  entrypoint: 'node worker.js',
+  port: null,
+  is_ingress_enabled: false,
+  ingress_protocol: null,
+  scaling_strategy: { type: 'manual', config: { instanceCount: 1 } },
+  internal_hostname: 'worker.worker-prod.svc',
+})
+
+interface World {
+  processes: Map<string, Record<string, any>>
+  suspended: Set<string>
+  clones: Map<string, Record<string, any>>
+}
+
 const defaultEnvVars = () =>
   new Map<string, Record<string, any>[]>([
     [
@@ -218,6 +282,16 @@ export const startFakeApi = async (): Promise<FakeApi> => {
   const overrides = new Map<string, Handler>()
   const validTokens = new Set([TOKENS.valid, TOKENS.other, TOKENS.readOnly])
   let envVars = defaultEnvVars()
+  let worlds = new Map<string, World>()
+  const worldOf = (token: string): World => {
+    const existing = worlds.get(token)
+    if (existing) {
+      return existing
+    }
+    const created: World = { processes: new Map(), suspended: new Set(), clones: new Map() }
+    worlds.set(token, created)
+    return created
+  }
 
   const envScope = (op: Operation, params: Record<string, string>) =>
     op.path.startsWith('/applications/global-env-vars')
@@ -230,7 +304,7 @@ export const startFakeApi = async (): Promise<FakeApi> => {
     getCurrentApiKeyV3: () => ({
       body: { id: 'key-1', company_id: 'company-1', name: 'MCP', capabilities: [{ permission: 'APP:READ' }] },
     }),
-    listApplicationsV3: ({ query }) => ({
+    listApplicationsV3: ({ query, token }) => ({
       body: page(
         [
           {
@@ -255,7 +329,10 @@ export const startFakeApi = async (): Promise<FakeApi> => {
             created_at: iso(-1e7),
             updated_at: iso(-1e6),
           },
-        ].filter((a) => !query.search || a.name.includes(query.search)),
+          ...worldOf(token).clones.values(),
+        ]
+          .map((a) => ({ ...a, is_suspended: a.is_suspended || worldOf(token).suspended.has(a.id) }))
+          .filter((a) => !query.search || a.name.includes(query.search)),
         query,
       ),
     }),
@@ -281,129 +358,133 @@ export const startFakeApi = async (): Promise<FakeApi> => {
         query,
       ),
     }),
-    getApplicationV3: ({ params }) =>
+    getApplicationV3: ({ params, token }) =>
       params.id === IDS.missing
         ? { status: 404, body: { message: 'Application not found', status: 404, data: { code: 'err-404' } } }
-        : {
-            body: {
-              id: params.id,
-              company_id: 'company-1',
-              project_id: IDS.project,
-              name: 'api-prod',
-              namespace: 'ns',
-              display_name: 'API',
-              source: 'privateGit',
-              type: 'app',
-              status: 'deploymentSuccess',
-              build_cache_enabled: true,
-              git_lfs_enabled: true,
-              hibernation_enabled: false,
-              hibernate_after_seconds: null,
-              auto_deploy: true,
-              is_suspended: false,
-              is_cdn_enabled: true,
-              is_edge_cache_enabled: false,
-              git_type: 'github',
-              repo_url: 'https://github.com/acme/api',
-              default_branch: 'main',
-              docker_image: null,
-              build_type: 'nixpacks',
-              build_path: null,
-              pack_builder: null,
-              nixpacks_version: null,
-              dockerfile_path: null,
-              docker_context: null,
-              allow_deploy_paths: [],
-              ignore_deploy_paths: [],
-              buildpacks: [],
-              cluster_id: IDS.cluster,
-              docker_registry_credential_id: null,
-              created_by: 'user-1',
-              created_at: iso(-1e7),
-              updated_at: iso(-1e6),
+        : worldOf(token).clones.has(params.id)
+          ? { body: worldOf(token).clones.get(params.id) }
+          : {
+              body: {
+                id: params.id,
+                company_id: 'company-1',
+                project_id: IDS.project,
+                name: 'api-prod',
+                namespace: 'ns',
+                display_name: 'API',
+                source: 'privateGit',
+                type: 'app',
+                status: 'deploymentSuccess',
+                build_cache_enabled: true,
+                git_lfs_enabled: true,
+                hibernation_enabled: false,
+                hibernate_after_seconds: null,
+                auto_deploy: true,
+                is_suspended: worldOf(token).suspended.has(params.id),
+                is_cdn_enabled: true,
+                is_edge_cache_enabled: false,
+                git_type: 'github',
+                repo_url: 'https://github.com/acme/api',
+                default_branch: 'main',
+                docker_image: null,
+                build_type: 'nixpacks',
+                build_path: null,
+                pack_builder: null,
+                nixpacks_version: null,
+                dockerfile_path: null,
+                docker_context: null,
+                allow_deploy_paths: [],
+                ignore_deploy_paths: [],
+                buildpacks: [],
+                cluster_id: IDS.cluster,
+                docker_registry_credential_id: null,
+                created_by: 'user-1',
+                created_at: iso(-1e7),
+                updated_at: iso(-1e6),
+                ...(params.id === IDS.app2 ? workerApp : {}),
+              },
             },
-          },
-    listProcessesV3: ({ query }) => ({
+    listProcessesV3: ({ params, query, token }) => ({
       body: page(
-        [
-          {
-            id: IDS.process,
-            app_id: IDS.app,
-            key: 'web',
-            type: 'web',
-            display_name: 'Web',
-            entrypoint: 'npm start',
-            port: 8080,
-            is_ingress_enabled: true,
-            ingress_protocol: 'http',
-            scaling_strategy: { type: 'manual', config: { instanceCount: 2 } },
-            resource_type_id: IDS.processSize,
-            resource_type_name: 'standard-1',
-            cpu_limit: 1000,
-            memory_limit: 2048,
-            schedule: null,
-            time_zone: null,
-            concurrency_policy: null,
-            active_deadline_seconds: null,
-            job_start_policy: null,
-            liveness_probe: {},
-            readiness_probe: {},
-            internal_hostname: 'web.api-prod.svc',
-            created_at: iso(-1e7),
-            updated_at: iso(-1e6),
-          },
-        ],
+        params.id === IDS.app2
+          ? [workerProcess()]
+          : [{ ...webProcess(), ...worldOf(token).processes.get(IDS.process) }],
         query,
       ),
     }),
-    getProcessV3: ({ params }) => ({
-      body: {
-        id: params.process_id,
-        key: 'web',
-        type: 'web',
-        scaling_strategy: { type: 'manual', config: { instanceCount: 2 } },
-      },
+    getProcessV3: ({ params, token }) => ({
+      body: { ...webProcess(), ...worldOf(token).processes.get(params.process_id), id: params.process_id },
     }),
-    updateProcessV3: ({ params, body }) => ({
-      body: {
+    updateProcessV3: ({ params, body, token }) => {
+      const process = {
+        ...webProcess(),
+        ...worldOf(token).processes.get(params.process_id),
+        ...body,
         id: params.process_id,
-        key: 'web',
-        type: 'web',
-        display_name: 'Web',
-        resource_type_name: 'standard-2',
-        scaling_strategy: body.scaling_strategy ?? { type: 'manual', config: { instanceCount: 2 } },
-      },
-    }),
-    listApplicationDomainsV3: ({ query }) => ({
+        updated_at: new Date().toISOString(),
+      }
+      worldOf(token).processes.set(params.process_id, process)
+      return { body: process }
+    },
+    suspendApplicationV3: ({ params, token }) => {
+      worldOf(token).suspended.add(params.id)
+      return { body: { message: 'Application suspension started' } }
+    },
+    cloneApplicationV3: ({ body, token }) => {
+      const id = randomUUID()
+      const clone = {
+        id,
+        company_id: 'company-1',
+        project_id: null,
+        name: `${String(body.display_name)
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')}-${id.slice(0, 5)}`,
+        display_name: body.display_name,
+        source: 'privateGit',
+        type: 'app',
+        status: 'deploymentSuccess',
+        auto_deploy: false,
+        is_suspended: false,
+        repo_url: 'https://github.com/acme/api',
+        default_branch: 'main',
+        cluster_id: body.cluster_id ?? IDS.cluster,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      worldOf(token).clones.set(id, clone)
+      return { status: 201, body: clone }
+    },
+    listApplicationDomainsV3: ({ params, query }) => ({
       body: page(
-        [
-          {
-            id: IDS.domain,
-            name: 'api-prod.sevalla.app',
-            status: 'ACTIVE',
-            type: 'SYSTEM',
-            is_enabled: true,
-            is_wildcard: false,
-            is_primary: false,
-            dns_records: null,
-            errors: [],
-            created_at: iso(-1e7),
-            updated_at: iso(-1e6),
-          },
-          {
-            id: 'bbbbbbbb-bbbb-4bbb-8bbb-cccccccccccc',
-            name: 'api.example.com',
-            status: 'VERIFICATION',
-            type: 'CUSTOM',
-            is_enabled: true,
-            is_wildcard: false,
-            is_primary: true,
-            dns_records: [{ type: 'TXT', name: '_cf-custom-hostname.api.example.com', value: 'abc' }],
-            errors: ['TXT record not found'],
-            created_at: iso(-1e6),
-            updated_at: iso(-1e6),
-          },
-        ],
+        params.id === IDS.app2
+          ? []
+          : [
+              {
+                id: IDS.domain,
+                name: 'api-prod.sevalla.app',
+                status: 'ACTIVE',
+                type: 'SYSTEM',
+                is_enabled: true,
+                is_wildcard: false,
+                is_primary: false,
+                dns_records: null,
+                errors: [],
+                created_at: iso(-1e7),
+                updated_at: iso(-1e6),
+              },
+              {
+                id: 'bbbbbbbb-bbbb-4bbb-8bbb-cccccccccccc',
+                name: 'api.example.com',
+                status: 'VERIFICATION',
+                type: 'CUSTOM',
+                is_enabled: true,
+                is_wildcard: false,
+                is_primary: true,
+                dns_records: [{ type: 'TXT', name: '_cf-custom-hostname.api.example.com', value: 'abc' }],
+                errors: ['TXT record not found'],
+                created_at: iso(-1e6),
+                updated_at: iso(-1e6),
+              },
+            ],
         query,
       ),
     }),
@@ -449,28 +530,31 @@ export const startFakeApi = async (): Promise<FakeApi> => {
       body: applyLogFilters(
         [
           logEntry(-50_000, 'INFO', 'GET /health 200', {
-            edgeResponseStatus: 200,
+            edgeResponseStatus: '200',
             clientRequestMethod: 'GET',
             clientRequestPath: '/health',
             clientIP: '1.2.3.4',
           }),
           logEntry(-40_000, 'INFO', 'POST /api/orders 502', {
-            edgeResponseStatus: 502,
+            edgeResponseStatus: '502',
             clientRequestMethod: 'POST',
             clientRequestPath: '/api/orders',
             clientIP: '1.2.3.5',
           }),
           logEntry(-30_000, 'INFO', 'GET /api/orders/1 404', {
-            edgeResponseStatus: 404,
+            edgeResponseStatus: '404',
             clientRequestMethod: 'GET',
             clientRequestPath: '/api/orders/1',
             clientIP: '1.2.3.6',
           }),
-        ],
+        ].map((entry) => ({ ...entry, tags: { idApp: IDS.app, isPreview: 'false' } })),
         query.filters,
       ).slice(-Number(query.limit ?? 1000)),
     }),
     getApplicationRequestsPerMinuteV3: () => ({ body: series([10, 20, 30, 40]) }),
+    getApplicationResponseTimeV3: ({ query }) => ({
+      body: series(Array(4).fill(query.percent ? Number(query.percent) * 10 : 500)),
+    }),
     getApplicationResponseTimeAvgV3: () => ({ body: { average_response_time_ms: 123.4 } }),
     getApplicationTopStatusCodesV3: () => ({
       body: [
@@ -491,8 +575,8 @@ export const startFakeApi = async (): Promise<FakeApi> => {
     }),
     getApplicationStatusCodesV3: () => ({
       body: [
-        { time: iso(-120_000), value: { '200': 10, '500': 1 } },
-        { time: iso(-60_000), value: { '200': 5 } },
+        { time: iso(-120_000), value: { '1xx': 0, '2xx': 10, '3xx': 0, '4xx': 0, '5xx': 1 } },
+        { time: iso(-60_000), value: { '1xx': 0, '2xx': 5, '3xx': 0, '4xx': 0, '5xx': 0 } },
       ],
     }),
     getProcessCpuUsageV3: () => ({ body: series([0.1, 0.5, 0.25]) }),
@@ -839,6 +923,13 @@ export const startFakeApi = async (): Promise<FakeApi> => {
     if (!isAuthRoute && (!token || !validTokens.has(token))) {
       return send(401, { message: 'Unauthorized', status: 401, data: { code: 'err-401' } })
     }
+    if (raw.length === 0 && String(req.headers['content-type'] ?? '').includes('application/json')) {
+      return send(400, {
+        message: "Body cannot be empty when content-type is set to 'application/json'",
+        status: 400,
+        data: {},
+      })
+    }
     if (token === TOKENS.readOnly && route.op.method !== 'GET') {
       return send(403, {
         message: 'This API key is missing the APP:UPDATE permission. Grant it to the key or use a key that has it.',
@@ -874,6 +965,7 @@ export const startFakeApi = async (): Promise<FakeApi> => {
       requests.length = 0
       overrides.clear()
       envVars = defaultEnvVars()
+      worlds = new Map()
     },
     close: () => new Promise((resolve) => server.close(() => resolve())),
     forOperation: (operationId) => requests.filter((r) => r.operationId === operationId),
