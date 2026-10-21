@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
-      contents: write
+      contents: read
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
@@ -52,23 +52,3 @@ jobs:
           path: eval-output/baseline
           if-no-files-found: ignore
           retention-days: 90
-      - name: Store the results on the eval-results branch
-        if: always()
-        run: |
-          set -euo pipefail
-          src=eval-output/baseline
-          if [ ! -f "$src/results.jsonl" ]; then exit 0; fi
-          run="$(date -u +%Y-%m-%dT%H%MZ)-${GITHUB_SHA::7}"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          if git fetch --depth 1 origin eval-results; then
-            git worktree add results FETCH_HEAD
-          else
-            git worktree add --orphan -b eval-results results
-          fi
-          mkdir -p "results/runs/$run"
-          cp "$src/results.jsonl" "$src/summary.md" "results/runs/$run/"
-          if [ -f "$src/errors.jsonl" ]; then cp "$src/errors.jsonl" "results/runs/$run/"; fi
-          git -C results add runs
-          git -C results commit -m "chore(evals): results $run"
-          git -C results push origin HEAD:eval-results

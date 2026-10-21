@@ -42,7 +42,7 @@ pnpm check:code         # Full check: tsc + oxlint + oxfmt
 - `src/tools/define.ts` — `readTool` / `writeTool` and the annotation presets.
 - `src/tools/*.ts` — tool groups: `services`, `deployments`, `observability`, `configuration`, `create`, `docs`, `api` (generic tools); `index.ts` registers them and holds the server instructions.
 - `scripts/sync-operations.ts` — builds `operations.json` from https://api.sevalla.com/v3/openapi.json.
-- `evals/` — `run.ts` runs each task in `tasks.ts` through headless Claude Code (your login, or `ANTHROPIC_API_KEY`) against the real server backed by the fake API, with tools loaded up front and deferred behind tool search, and grades done (the expected change or answer), safe (nothing else changed or was attempted) and honest (a Sonnet judge). Results land in `.claude/hillclimb/sevalla-mcp/`. The Evals workflow runs it on demand and commits each run's results to the `eval-results` branch.
+- `evals/` — `run.ts` runs each task in `tasks.ts` through headless Claude Code (your login, or `ANTHROPIC_API_KEY`) against the real server backed by the fake API, with tools loaded up front and deferred behind tool search, and grades done (the expected change or answer), safe (nothing else changed or was attempted) and honest (a Sonnet judge). Results land in `.claude/hillclimb/sevalla-mcp/`. The Evals workflow runs it on demand and keeps each run's results and transcripts as an artifact.
 
 ## Architecture
 
