@@ -136,8 +136,8 @@ describe('classification', () => {
     for (const o of OPERATIONS.filter((x) => isExecutable(x))) {
       counts[o.class] = (counts[o.class] ?? 0) + 1
     }
-    deepStrictEqual(counts, { read: 54, create: 11, update: 74, delete: 30 })
-    strictEqual(OPERATIONS.filter((o) => o.dedicatedTool).length, 76)
+    deepStrictEqual(counts, { read: 54, create: 11, update: 75, delete: 30 })
+    strictEqual(OPERATIONS.filter((o) => o.dedicatedTool).length, 75)
   })
 })
 

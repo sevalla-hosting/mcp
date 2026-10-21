@@ -111,7 +111,6 @@ export const DEDICATED_TOOLS: Record<string, string> = {
   triggerDeploymentV3: 'trigger_deployment',
   deployStaticSiteV3: 'trigger_deployment',
   rollbackDeploymentV3: 'rollback_deployment',
-  updateProcessV3: 'scale_process',
   addApplicationDomainV3: 'add_domain',
   addStaticSiteDomainV3: 'add_domain',
   createApplicationV3: 'create_application',

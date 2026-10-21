@@ -444,6 +444,40 @@ describe('e2e: scaling and domains', () => {
     deepStrictEqual(last('addApplicationDomainV3').body, { domain_name: 'example.com', is_wildcard: true })
     strictEqual(res.json.domain.dns_records[0].type, 'A')
   })
+
+  it('adds a domain with a custom certificate and does not echo its key', async () => {
+    const cert = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----'
+    const key = '-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----'
+    const res = await mcp.call('add_domain', {
+      service_type: 'static_site',
+      service_id: IDS.site,
+      domain: 'www.example.com',
+      ssl_certificate: cert,
+      ssl_private_key: key,
+    })
+    deepStrictEqual(last('addStaticSiteDomainV3').body, {
+      domain_name: 'www.example.com',
+      is_wildcard: false,
+      custom_ssl_cert: cert,
+      custom_ssl_key: key,
+    })
+    ok(!res.text.includes('MIIE'))
+    const keyless = await mcp.call('add_domain', {
+      service_type: 'application',
+      service_id: IDS.app,
+      domain: 'api.example.com',
+      ssl_certificate: cert,
+    })
+    strictEqual(keyless.isError, true)
+    const swapped = await mcp.call('add_domain', {
+      service_type: 'application',
+      service_id: IDS.app,
+      domain: 'api.example.com',
+      ssl_certificate: key,
+      ssl_private_key: cert,
+    })
+    strictEqual(swapped.isError, true)
+  })
 })
 
 describe('e2e: create tools', () => {
@@ -586,6 +620,12 @@ describe('e2e: generic API tools', () => {
     deepStrictEqual(last('createProjectV3').body, { display_name: 'Shop' })
     await mcp.call('sevalla_api_update', { operation_id: 'suspendApplicationV3', path_params: { id: IDS.app } })
     strictEqual(last('suspendApplicationV3').path, `/v3/applications/${IDS.app}/suspend`)
+    await mcp.call('sevalla_api_update', {
+      operation_id: 'updateProcessV3',
+      path_params: { id: IDS.app, process_id: IDS.process },
+      body: { entrypoint: 'node server.js' },
+    })
+    deepStrictEqual(last('updateProcessV3').body, { entrypoint: 'node server.js' })
     await mcp.call('sevalla_api_delete', {
       operation_id: 'deleteApplicationDomainV3',
       path_params: { id: IDS.app, domain_id: IDS.domain },
