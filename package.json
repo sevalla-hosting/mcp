@@ -17,6 +17,7 @@
     "test:unit": "node --test 'test/*.test.ts'",
     "test:e2e": "node --test 'test/e2e/*.test.ts' && MCP_TEST_ERA=legacy node --test 'test/e2e/*.test.ts'",
     "test:live": "node --test 'test/live/*.live.ts'",
+    "eval": "node evals/run.ts",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-include='src/**' 'test/**/*.test.ts'",
     "sync:operations": "node scripts/sync-operations.ts",
     "check:operations": "node scripts/sync-operations.ts --check",

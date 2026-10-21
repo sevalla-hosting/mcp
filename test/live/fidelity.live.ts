@@ -19,6 +19,7 @@ const OPERATIONS = [
   'getApplicationRuntimeLogsV3',
   'getApplicationAccessLogsV3',
   'getApplicationRequestsPerMinuteV3',
+  'getApplicationResponseTimeV3',
   'getApplicationResponseTimeAvgV3',
   'getApplicationTopStatusCodesV3',
   'getApplicationSlowestRequestsV3',
