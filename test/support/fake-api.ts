@@ -182,6 +182,36 @@ const webProcess = (): Record<string, any> => ({
   updated_at: iso(-1e6),
 })
 
+const workerApp = {
+  name: 'worker-prod',
+  display_name: 'Worker',
+  source: 'dockerImage',
+  status: 'deploymentFailed',
+  auto_deploy: false,
+  is_suspended: true,
+  is_cdn_enabled: false,
+  git_type: null,
+  repo_url: null,
+  default_branch: null,
+  docker_image: 'ghcr.io/acme/worker:1',
+  build_type: 'dockerImage',
+}
+
+const workerProcess = (): Record<string, any> => ({
+  ...webProcess(),
+  id: '44444444-4444-4444-8444-555555555555',
+  app_id: IDS.app2,
+  key: 'worker',
+  type: 'worker',
+  display_name: 'Worker',
+  entrypoint: 'node worker.js',
+  port: null,
+  is_ingress_enabled: false,
+  ingress_protocol: null,
+  scaling_strategy: { type: 'manual', config: { instanceCount: 1 } },
+  internal_hostname: 'worker.worker-prod.svc',
+})
+
 interface World {
   processes: Map<string, Record<string, any>>
   suspended: Set<string>
@@ -370,10 +400,16 @@ export const startFakeApi = async (): Promise<FakeApi> => {
                 created_by: 'user-1',
                 created_at: iso(-1e7),
                 updated_at: iso(-1e6),
+                ...(params.id === IDS.app2 ? workerApp : {}),
               },
             },
-    listProcessesV3: ({ query, token }) => ({
-      body: page([{ ...webProcess(), ...worldOf(token).processes.get(IDS.process) }], query),
+    listProcessesV3: ({ params, query, token }) => ({
+      body: page(
+        params.id === IDS.app2
+          ? [workerProcess()]
+          : [{ ...webProcess(), ...worldOf(token).processes.get(IDS.process) }],
+        query,
+      ),
     }),
     getProcessV3: ({ params, token }) => ({
       body: { ...webProcess(), ...worldOf(token).processes.get(params.process_id), id: params.process_id },
@@ -417,36 +453,38 @@ export const startFakeApi = async (): Promise<FakeApi> => {
       worldOf(token).clones.set(id, clone)
       return { status: 201, body: clone }
     },
-    listApplicationDomainsV3: ({ query }) => ({
+    listApplicationDomainsV3: ({ params, query }) => ({
       body: page(
-        [
-          {
-            id: IDS.domain,
-            name: 'api-prod.sevalla.app',
-            status: 'ACTIVE',
-            type: 'SYSTEM',
-            is_enabled: true,
-            is_wildcard: false,
-            is_primary: false,
-            dns_records: null,
-            errors: [],
-            created_at: iso(-1e7),
-            updated_at: iso(-1e6),
-          },
-          {
-            id: 'bbbbbbbb-bbbb-4bbb-8bbb-cccccccccccc',
-            name: 'api.example.com',
-            status: 'VERIFICATION',
-            type: 'CUSTOM',
-            is_enabled: true,
-            is_wildcard: false,
-            is_primary: true,
-            dns_records: [{ type: 'TXT', name: '_cf-custom-hostname.api.example.com', value: 'abc' }],
-            errors: ['TXT record not found'],
-            created_at: iso(-1e6),
-            updated_at: iso(-1e6),
-          },
-        ],
+        params.id === IDS.app2
+          ? []
+          : [
+              {
+                id: IDS.domain,
+                name: 'api-prod.sevalla.app',
+                status: 'ACTIVE',
+                type: 'SYSTEM',
+                is_enabled: true,
+                is_wildcard: false,
+                is_primary: false,
+                dns_records: null,
+                errors: [],
+                created_at: iso(-1e7),
+                updated_at: iso(-1e6),
+              },
+              {
+                id: 'bbbbbbbb-bbbb-4bbb-8bbb-cccccccccccc',
+                name: 'api.example.com',
+                status: 'VERIFICATION',
+                type: 'CUSTOM',
+                is_enabled: true,
+                is_wildcard: false,
+                is_primary: true,
+                dns_records: [{ type: 'TXT', name: '_cf-custom-hostname.api.example.com', value: 'abc' }],
+                errors: ['TXT record not found'],
+                created_at: iso(-1e6),
+                updated_at: iso(-1e6),
+              },
+            ],
         query,
       ),
     }),
