@@ -1,6 +1,7 @@
-import { after, before, beforeEach, describe, it } from 'node:test'
+import { after, afterEach, before, beforeEach, describe, it } from 'node:test'
 import { deepStrictEqual, ok, rejects, strictEqual } from 'node:assert'
 import { IDS, SECRET_VALUE, TOKENS } from '../support/fake-api.ts'
+import { getOperation, OPERATIONS } from '../../src/sevalla/operations.ts'
 import { startHarness, type Harness, type McpSession } from '../support/harness.ts'
 
 let h: Harness
@@ -17,6 +18,18 @@ after(async () => {
 
 beforeEach(() => {
   h.api.reset()
+})
+
+const sent = new Map<string, Set<string>>()
+
+afterEach(() => {
+  for (const r of h.api.requests) {
+    const fields = sent.get(r.operationId) ?? new Set()
+    for (const key of [...Object.keys(r.query), ...Object.keys(r.body ?? {})]) {
+      fields.add(key)
+    }
+    sent.set(r.operationId, fields)
+  }
 })
 
 const last = (operationId: string) => {
@@ -90,6 +103,16 @@ describe('e2e: get_application / get_static_site / get_database / get_platform_o
     strictEqual(res.json.latest_deployment.commit, 'abcdef1')
     strictEqual(res.json.latest_deployment.commit_message, 'Fix checkout flow')
     ok(!res.text.includes('author_img'))
+    strictEqual(res.json.more, undefined)
+  })
+
+  it('names the operation that pages domains beyond the first 100', async () => {
+    h.api.override('listApplicationDomainsV3', () => ({
+      body: { data: [{ id: IDS.domain, name: 'a.example.com' }], total: 340, offset: 0, limit: 100 },
+    }))
+    const res = await mcp.call('get_application', { application_id: IDS.app })
+    strictEqual(res.json.more, '1 of 340 shown; listApplicationDomainsV3 (sevalla_api_read) pages the rest.')
+    strictEqual(last('listApplicationDomainsV3').query.limit, '100')
   })
 
   it('returns every field with detail=full', async () => {
@@ -316,6 +339,34 @@ describe('e2e: logs and metrics', () => {
     strictEqual(db.json.metrics.used_storage_bytes, 1024)
   })
 
+  it('filters HTTP metrics by request and sets the response time percentile', async () => {
+    const res = await mcp.call('get_metrics', {
+      target: 'application',
+      application_id: IDS.app,
+      metrics: ['response_time_ms', 'top_pages'],
+      status: '404',
+      path_prefix: '/api',
+      percentile: 99,
+    })
+    strictEqual(res.isError, false, res.text)
+    const filters = [
+      { key: 'attributes.edgeResponseStatus', operator: 'EQUALS', value: '404' },
+      { key: 'attributes.clientRequestPath', operator: 'STARTS_WITH', value: '/api' },
+    ]
+    deepStrictEqual(JSON.parse(last('getApplicationResponseTimeV3').query.filters ?? ''), filters)
+    strictEqual(last('getApplicationResponseTimeV3').query.percent, '99')
+    strictEqual(last('getApplicationTopPagesV3').query.percent, undefined)
+    const process = await mcp.call('get_metrics', {
+      target: 'process',
+      application_id: IDS.app,
+      process_id: IDS.process,
+      status: '5xx',
+    })
+    ok(process.text.includes('apply to applications and static sites'))
+    const noSeries = await mcp.call('get_metrics', { target: 'application', application_id: IDS.app, percentile: 95 })
+    ok(noSeries.text.includes('percentile applies to the response_time_ms metric'))
+  })
+
   it('reports missing IDs and unknown metric names', async () => {
     const missing = await mcp.call('get_metrics', { target: 'process', application_id: IDS.app })
     strictEqual(missing.isError, true)
@@ -519,6 +570,18 @@ describe('e2e: create tools', () => {
     })
   })
 
+  it('refuses both deploy path rules at once', async () => {
+    const res = await mcp.call('create_static_site', {
+      display_name: 'Docs',
+      repo_url: 'https://github.com/acme/docs',
+      default_branch: 'main',
+      allow_deploy_paths: ['docs/**'],
+      ignore_deploy_paths: ['*.md'],
+    })
+    ok(res.text.includes('mutually exclusive'))
+    strictEqual(h.api.forOperation('createStaticSiteV3').length, 0)
+  })
+
   it('creates a database, connects it and never returns the password', async () => {
     const res = await mcp.call('create_database', {
       display_name: 'Orders DB',
@@ -602,7 +665,7 @@ describe('e2e: generic API tools', () => {
   })
 
   it('routes each class only through its own tool', async () => {
-    const dedicated = await mcp.call('sevalla_api_read', { operation_id: 'listApplicationsV3' })
+    const dedicated = await mcp.call('sevalla_api_read', { operation_id: 'listStaticSitesV3' })
     ok(dedicated.text.includes('available as the list_services tool'))
     const wrongClass = await mcp.call('sevalla_api_read', { operation_id: 'createProjectV3' })
     ok(wrongClass.text.includes('run by sevalla_api_create'))
@@ -671,5 +734,207 @@ describe('e2e: isolation between users', () => {
       .map((r) => r.token)
       .sort()
     deepStrictEqual(tokens, [TOKENS.other, TOKENS.valid].sort())
+  })
+})
+
+describe('e2e: every tool input reaches the API', () => {
+  const send = async (tool: string, args: Record<string, unknown>) => {
+    const res = await mcp.call(tool, args)
+    strictEqual(res.isError, false, res.text)
+  }
+  const pem = (label: string) => `-----BEGIN ${label}-----\nMIIB\n-----END ${label}-----`
+
+  it('lists the services of a project', () => send('list_services', { project_id: IDS.project }))
+
+  it('reads every metric of every target', async () => {
+    const http = [
+      'requests_per_minute',
+      'response_time_ms',
+      'average_response_time_ms',
+      'status_codes',
+      'top_status_codes',
+      'top_countries',
+      'slowest_requests',
+      'top_pages',
+    ]
+    const filters = { status: '5xx', request_method: 'GET', path_prefix: '/api', percentile: 95 }
+    await send('get_metrics', { target: 'application', application_id: IDS.app, metrics: http, ...filters })
+    await send('get_metrics', { target: 'static_site', static_site_id: IDS.site, metrics: http, ...filters })
+    await send('get_metrics', {
+      target: 'process',
+      application_id: IDS.app,
+      process_id: IDS.process,
+      metrics: ['cpu_usage_cores', 'cpu_limit_cores', 'memory_usage_bytes', 'memory_limit_bytes', 'instance_count'],
+    })
+    await send('get_metrics', {
+      target: 'database',
+      database_id: IDS.db,
+      metrics: [
+        'cpu_usage_cores',
+        'cpu_limit_cores',
+        'memory_usage_bytes',
+        'memory_limit_bytes',
+        'storage_usage_bytes',
+        'storage_limit_bytes',
+      ],
+    })
+  })
+
+  it('searches the logs of both service types', async () => {
+    for (const [service_type, service_id] of [
+      ['application', IDS.app],
+      ['static_site', IDS.site],
+    ]) {
+      await send('search_access_logs', { service_type, service_id, status: '5xx', request_method: 'GET', limit: 10 })
+    }
+    await send('get_deployment_logs', {
+      service_type: 'static_site',
+      service_id: IDS.site,
+      deployment_id: IDS.siteDeployment,
+    })
+  })
+
+  it('creates and updates variables in every scope', async () => {
+    await send('set_environment_variables', {
+      scope: 'application',
+      service_id: IDS.app,
+      variables: [
+        { key: 'NEW_KEY', value: 'v', runtime: true, buildtime: true },
+        { key: 'NODE_ENV', value: 'v', runtime: true, buildtime: false },
+      ],
+    })
+    await send('set_environment_variables', {
+      scope: 'static_site',
+      service_id: IDS.site,
+      variables: [
+        { key: 'NEW_KEY', value: 'v', production: true, preview: false, branch: 'main' },
+        { key: 'PUBLIC_API', value: 'v', production: true, preview: false, branch: 'main' },
+      ],
+    })
+    await send('set_environment_variables', {
+      scope: 'global',
+      variables: [
+        { key: 'NEW_KEY', value: 'v', runtime: true, buildtime: true },
+        { key: 'SENTRY_DSN', value: 'v', runtime: true, buildtime: false },
+      ],
+    })
+  })
+
+  it('deploys an image and a branch', async () => {
+    await send('trigger_deployment', { service_type: 'application', service_id: IDS.app, docker_image: 'nginx:1.27' })
+    await send('trigger_deployment', { service_type: 'static_site', service_id: IDS.site, branch: 'main' })
+  })
+
+  it('adds an application domain with a custom certificate', () =>
+    send('add_domain', {
+      service_type: 'application',
+      service_id: IDS.app,
+      domain: 'api.example.com',
+      ssl_certificate: pem('CERTIFICATE'),
+      ssl_private_key: pem('PRIVATE KEY'),
+    }))
+
+  it('creates services with every option', async () => {
+    await send('create_application', {
+      display_name: 'Git app',
+      cluster_id: IDS.cluster,
+      source: 'publicGit',
+      repo_url: 'https://github.com/acme/shop',
+      git_type: 'github',
+      default_branch: 'main',
+      project_id: IDS.project,
+      deploy: false,
+    })
+    await send('create_application', {
+      display_name: 'Image app',
+      cluster_id: IDS.cluster,
+      source: 'dockerImage',
+      docker_image: 'ghcr.io/acme/shop:1',
+      docker_registry_credential_id: IDS.newResource,
+      deploy: false,
+    })
+    await send('create_static_site', {
+      display_name: 'Docs',
+      repo_url: 'https://github.com/acme/docs',
+      default_branch: 'main',
+      source: 'publicGit',
+      git_type: 'github',
+      install_command: 'npm ci',
+      build_command: 'npm run build',
+      published_directory: 'dist',
+      root_directory: 'site',
+      node_version: '22',
+      auto_deploy: true,
+      allow_deploy_paths: ['site/**'],
+      is_preview_enabled: true,
+      index_file: 'index.html',
+      error_file: '404.html',
+      project_id: IDS.project,
+    })
+    await send('create_static_site', {
+      display_name: 'Blog',
+      repo_url: 'https://github.com/acme/blog',
+      default_branch: 'main',
+      ignore_deploy_paths: ['*.md'],
+    })
+    await send('create_database', {
+      display_name: 'Orders',
+      type: 'postgresql',
+      cluster_id: IDS.cluster,
+      size_id: IDS.dbSize,
+      extensions: { vector: true },
+      project_id: IDS.project,
+    })
+  })
+})
+
+const AGGREGATE = 'An aggregate over the window, not a series.'
+const SORTED_HERE = 'Entries are sorted on this server; end_time reaches older ones.'
+const MATCHED_HERE =
+  'Matched on this server: the API searches only the message, without client IP, country or user agent.'
+const FILTERED_HERE = 'get_deployment_logs filters and sorts the lines on this server.'
+const BY_KEY = 'Variables are matched by key, so an update never renames one.'
+
+const httpMetricGaps = (scope: string) =>
+  Object.fromEntries(
+    ['ResponseTimeAvg', 'SlowestRequests', 'TopCountries', 'TopPages', 'TopStatusCodes'].map((metric) => [
+      `get${scope}${metric}V3`,
+      { interval_in_seconds: AGGREGATE },
+    ]),
+  )
+
+const UNSENT: Record<string, Record<string, string>> = {
+  ...httpMetricGaps('Application'),
+  ...httpMetricGaps('StaticSite'),
+  getApplicationAccessLogsV3: { search: MATCHED_HERE, order: SORTED_HERE },
+  getStaticSiteAccessLogsV3: { search: MATCHED_HERE, order: SORTED_HERE },
+  getApplicationRuntimeLogsV3: { order: SORTED_HERE },
+  getApplicationDeploymentLogsV3: { search: FILTERED_HERE, filters: FILTERED_HERE, order: FILTERED_HERE },
+  getStaticSiteDeploymentLogsV3: { search: FILTERED_HERE, filters: FILTERED_HERE, order: FILTERED_HERE },
+  listDatabaseBackupsV3: { type: 'Every backup type is listed.' },
+  updateEnvironmentVariableV3: { key: BY_KEY },
+  updateStaticSiteEnvVarV3: { key: BY_KEY },
+  updateGlobalEnvVarV3: { key: BY_KEY },
+}
+
+describe('e2e: dedicated tools cover every field of their operations', () => {
+  it('sends each query and body field, or pins why not', () => {
+    const gaps: string[] = []
+    for (const op of OPERATIONS.filter((o) => o.dedicatedTool)) {
+      const fields = [
+        ...op.params.filter((p) => p.in === 'query').map((p) => p.name),
+        ...Object.keys((op.body?.properties ?? {}) as object),
+      ]
+      const unsent = UNSENT[op.id] ?? {}
+      const used = sent.get(op.id) ?? new Set()
+      gaps.push(
+        ...fields.filter((f) => !used.has(f) && !unsent[f]).map((f) => `${op.id} (${op.dedicatedTool}): ${f}`),
+        ...Object.keys(unsent)
+          .filter((f) => !fields.includes(f) || used.has(f))
+          .map((f) => `${op.id}: ${f} is pinned as unsent but is sent or not in the spec`),
+      )
+    }
+    gaps.push(...Object.keys(UNSENT).filter((id) => !getOperation(id)?.dedicatedTool))
+    deepStrictEqual(gaps, [])
   })
 })

@@ -95,16 +95,20 @@ export const summarizeDeployment = (deployment: ApiRecord | undefined) =>
       })
     : undefined
 
-const listAll = async (api: ReadOnlyClient, path: string, max = 100): Promise<ApiRecord[]> => {
-  const page = await api.get<Page<ApiRecord>>(path, { limit: max })
-  return page.data
+const firstPage = (api: ReadOnlyClient, path: string) => api.get<Page<ApiRecord>>(path, { limit: 100 })
+
+const unlisted = (pages: Record<string, Page<ApiRecord>>) => {
+  const notes = Object.entries(pages)
+    .filter(([, page]) => page.total > page.data.length)
+    .map(([id, page]) => `${page.data.length} of ${page.total} shown; ${id} (sevalla_api_read) pages the rest.`)
+  return notes.length > 0 ? notes.join(' ') : undefined
 }
 
 export const listServices = readTool({
   name: 'list_services',
   title: 'List Sevalla services',
   description:
-    'Lists the applications, static sites and databases in the Sevalla account with status, names and the IDs other tools take. One service in detail: get_application, get_static_site, get_database. Pipelines, projects, load balancers and buckets: sevalla_api_read.',
+    'Lists the applications, static sites and databases in the Sevalla account with status, names and the IDs other tools take. One service in detail: get_application, get_static_site, get_database. Pipelines, projects, load balancers, buckets and lists by status, source or engine: sevalla_api_read.',
   input: z
     .object({
       type: z
@@ -159,12 +163,19 @@ export const getApplication = readTool({
     const base = encodePath`/applications/${application_id}`
     const [app, processes, domains, deployments] = await Promise.all([
       api.get<ApiRecord>(base),
-      listAll(api, `${base}/processes`),
-      listAll(api, `${base}/domains`),
+      firstPage(api, `${base}/processes`),
+      firstPage(api, `${base}/domains`),
       api.get<Page<ApiRecord>>(`${base}/deployments`, { limit: 1 }),
     ])
+    const more = unlisted({ listProcessesV3: processes, listApplicationDomainsV3: domains })
     if (detail === 'full') {
-      return toolResult({ ...app, processes, domains, latest_deployment: deployments.data[0] ?? null })
+      return toolResult({
+        ...app,
+        processes: processes.data,
+        domains: domains.data,
+        latest_deployment: deployments.data[0] ?? null,
+        more,
+      })
     }
     return toolResult(
       omitEmpty({
@@ -184,9 +195,10 @@ export const getApplication = readTool({
         edge_cache_enabled: app.is_edge_cache_enabled,
         project_id: app.project_id,
         cluster_id: app.cluster_id,
-        processes: processes.map(summarizeProcess),
-        domains: domains.map(summarizeDomain),
+        processes: processes.data.map(summarizeProcess),
+        domains: domains.data.map(summarizeDomain),
         latest_deployment: summarizeDeployment(deployments.data[0]),
+        more,
       }),
     )
   },
@@ -202,11 +214,12 @@ export const getStaticSite = readTool({
     const base = encodePath`/static-sites/${static_site_id}`
     const [site, domains, deployments] = await Promise.all([
       api.get<ApiRecord>(base),
-      listAll(api, `${base}/domains`),
+      firstPage(api, `${base}/domains`),
       api.get<Page<ApiRecord>>(`${base}/deployments`, { limit: 1 }),
     ])
+    const more = unlisted({ listStaticSiteDomainsV3: domains })
     if (detail === 'full') {
-      return toolResult({ ...site, domains, latest_deployment: deployments.data[0] ?? null })
+      return toolResult({ ...site, domains: domains.data, latest_deployment: deployments.data[0] ?? null, more })
     }
     return toolResult(
       omitEmpty({
@@ -225,8 +238,9 @@ export const getStaticSite = readTool({
         root_directory: site.root_directory,
         node_version: site.node_version,
         project_id: site.project_id,
-        domains: domains.map(summarizeDomain),
+        domains: domains.data.map(summarizeDomain),
         latest_deployment: summarizeDeployment(deployments.data[0]),
+        more,
       }),
     )
   },
