@@ -744,6 +744,9 @@ export const startFakeApi = async (): Promise<FakeApi> => {
       ),
     }),
   }
+  handlers.getStaticSiteDeploymentV3 = handlers.getDeploymentV3 as Handler
+  handlers.getStaticSiteDeploymentLogsV3 = handlers.getApplicationDeploymentLogsV3 as Handler
+  handlers.getStaticSiteAccessLogsV3 = handlers.getApplicationAccessLogsV3 as Handler
 
   const envHandlers = (op: Operation): Handler | undefined => {
     if (!/env-vars/.test(op.path)) {

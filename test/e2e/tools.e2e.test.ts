@@ -1,6 +1,7 @@
-import { after, before, beforeEach, describe, it } from 'node:test'
+import { after, afterEach, before, beforeEach, describe, it } from 'node:test'
 import { deepStrictEqual, ok, rejects, strictEqual } from 'node:assert'
 import { IDS, SECRET_VALUE, TOKENS } from '../support/fake-api.ts'
+import { getOperation, OPERATIONS } from '../../src/sevalla/operations.ts'
 import { startHarness, type Harness, type McpSession } from '../support/harness.ts'
 
 let h: Harness
@@ -17,6 +18,18 @@ after(async () => {
 
 beforeEach(() => {
   h.api.reset()
+})
+
+const sent = new Map<string, Set<string>>()
+
+afterEach(() => {
+  for (const r of h.api.requests) {
+    const fields = sent.get(r.operationId) ?? new Set()
+    for (const key of [...Object.keys(r.query), ...Object.keys(r.body ?? {})]) {
+      fields.add(key)
+    }
+    sent.set(r.operationId, fields)
+  }
 })
 
 const last = (operationId: string) => {
@@ -671,5 +684,215 @@ describe('e2e: isolation between users', () => {
       .map((r) => r.token)
       .sort()
     deepStrictEqual(tokens, [TOKENS.other, TOKENS.valid].sort())
+  })
+})
+
+describe('e2e: every tool input reaches the API', () => {
+  const send = async (tool: string, args: Record<string, unknown>) => {
+    const res = await mcp.call(tool, args)
+    strictEqual(res.isError, false, res.text)
+  }
+  const pem = (label: string) => `-----BEGIN ${label}-----\nMIIB\n-----END ${label}-----`
+
+  it('lists the services of a project', () => send('list_services', { project_id: IDS.project }))
+
+  it('reads every metric of every target', async () => {
+    const http = [
+      'requests_per_minute',
+      'response_time_ms',
+      'average_response_time_ms',
+      'status_codes',
+      'top_status_codes',
+      'top_countries',
+      'slowest_requests',
+      'top_pages',
+    ]
+    await send('get_metrics', { target: 'application', application_id: IDS.app, metrics: http })
+    await send('get_metrics', { target: 'static_site', static_site_id: IDS.site, metrics: http })
+    await send('get_metrics', {
+      target: 'process',
+      application_id: IDS.app,
+      process_id: IDS.process,
+      metrics: ['cpu_usage_cores', 'cpu_limit_cores', 'memory_usage_bytes', 'memory_limit_bytes', 'instance_count'],
+    })
+    await send('get_metrics', {
+      target: 'database',
+      database_id: IDS.db,
+      metrics: [
+        'cpu_usage_cores',
+        'cpu_limit_cores',
+        'memory_usage_bytes',
+        'memory_limit_bytes',
+        'storage_usage_bytes',
+        'storage_limit_bytes',
+      ],
+    })
+  })
+
+  it('searches the logs of both service types', async () => {
+    for (const [service_type, service_id] of [
+      ['application', IDS.app],
+      ['static_site', IDS.site],
+    ]) {
+      await send('search_access_logs', { service_type, service_id, status: '5xx', request_method: 'GET', limit: 10 })
+    }
+    await send('get_deployment_logs', {
+      service_type: 'static_site',
+      service_id: IDS.site,
+      deployment_id: IDS.siteDeployment,
+    })
+  })
+
+  it('creates and updates variables in every scope', async () => {
+    await send('set_environment_variables', {
+      scope: 'application',
+      service_id: IDS.app,
+      variables: [
+        { key: 'NEW_KEY', value: 'v', runtime: true, buildtime: true },
+        { key: 'NODE_ENV', value: 'v', runtime: true, buildtime: false },
+      ],
+    })
+    await send('set_environment_variables', {
+      scope: 'static_site',
+      service_id: IDS.site,
+      variables: [
+        { key: 'NEW_KEY', value: 'v', production: true, preview: false, branch: 'main' },
+        { key: 'PUBLIC_API', value: 'v', production: true, preview: false, branch: 'main' },
+      ],
+    })
+    await send('set_environment_variables', {
+      scope: 'global',
+      variables: [
+        { key: 'NEW_KEY', value: 'v', runtime: true, buildtime: true },
+        { key: 'SENTRY_DSN', value: 'v', runtime: true, buildtime: false },
+      ],
+    })
+  })
+
+  it('deploys an image and a branch', async () => {
+    await send('trigger_deployment', { service_type: 'application', service_id: IDS.app, docker_image: 'nginx:1.27' })
+    await send('trigger_deployment', { service_type: 'static_site', service_id: IDS.site, branch: 'main' })
+  })
+
+  it('adds an application domain with a custom certificate', () =>
+    send('add_domain', {
+      service_type: 'application',
+      service_id: IDS.app,
+      domain: 'api.example.com',
+      ssl_certificate: pem('CERTIFICATE'),
+      ssl_private_key: pem('PRIVATE KEY'),
+    }))
+
+  it('creates services with every option', async () => {
+    await send('create_application', {
+      display_name: 'Git app',
+      cluster_id: IDS.cluster,
+      source: 'publicGit',
+      repo_url: 'https://github.com/acme/shop',
+      git_type: 'github',
+      default_branch: 'main',
+      project_id: IDS.project,
+      deploy: false,
+    })
+    await send('create_application', {
+      display_name: 'Image app',
+      cluster_id: IDS.cluster,
+      source: 'dockerImage',
+      docker_image: 'ghcr.io/acme/shop:1',
+      docker_registry_credential_id: IDS.newResource,
+      deploy: false,
+    })
+    await send('create_static_site', {
+      display_name: 'Docs',
+      repo_url: 'https://github.com/acme/docs',
+      default_branch: 'main',
+      source: 'publicGit',
+      git_type: 'github',
+      install_command: 'npm ci',
+      build_command: 'npm run build',
+      published_directory: 'dist',
+      root_directory: 'site',
+      node_version: '22',
+      auto_deploy: true,
+      project_id: IDS.project,
+    })
+    await send('create_database', {
+      display_name: 'Orders',
+      type: 'postgresql',
+      cluster_id: IDS.cluster,
+      size_id: IDS.dbSize,
+      extensions: { vector: true },
+      project_id: IDS.project,
+    })
+  })
+})
+
+const WHOLE_SERVICE = 'Not exposed: get_metrics measures the whole service.'
+const AGGREGATE = 'An aggregate over the window, not a series.'
+const SORTED_HERE = 'Entries are sorted on this server; end_time reaches older ones.'
+const MATCHED_HERE =
+  'Matched on this server: the API searches only the message, without client IP, country or user agent.'
+const FILTERED_HERE = 'get_deployment_logs filters and sorts the lines on this server.'
+const FIRST_PAGE = 'Only the first 100 are read.'
+const LIST_FILTERS = 'Not exposed: list_services filters by name and project.'
+const BY_KEY = 'Variables are matched by key, so an update never renames one.'
+const AFTER_CREATION = 'Not exposed: updateStaticSiteV3 (sevalla_api_update) sets it after creation.'
+
+const httpMetricGaps = (scope: string) => ({
+  [`get${scope}RequestsPerMinuteV3`]: { filters: WHOLE_SERVICE },
+  [`get${scope}ResponseTimeV3`]: { filters: WHOLE_SERVICE, percent: 'Not exposed: the API default percentile.' },
+  [`get${scope}ResponseTimeAvgV3`]: { filters: WHOLE_SERVICE, interval_in_seconds: AGGREGATE },
+  [`get${scope}SlowestRequestsV3`]: { filters: WHOLE_SERVICE, interval_in_seconds: AGGREGATE },
+  [`get${scope}StatusCodesV3`]: { filters: WHOLE_SERVICE },
+  [`get${scope}TopCountriesV3`]: { filters: WHOLE_SERVICE, interval_in_seconds: AGGREGATE },
+  [`get${scope}TopPagesV3`]: { filters: WHOLE_SERVICE, interval_in_seconds: AGGREGATE },
+  [`get${scope}TopStatusCodesV3`]: { filters: WHOLE_SERVICE, interval_in_seconds: AGGREGATE },
+})
+
+const UNSENT: Record<string, Record<string, string>> = {
+  ...httpMetricGaps('Application'),
+  ...httpMetricGaps('StaticSite'),
+  getApplicationAccessLogsV3: { search: MATCHED_HERE, order: SORTED_HERE },
+  getStaticSiteAccessLogsV3: { search: MATCHED_HERE, order: SORTED_HERE },
+  getApplicationRuntimeLogsV3: { order: SORTED_HERE },
+  getApplicationDeploymentLogsV3: { search: FILTERED_HERE, filters: FILTERED_HERE, order: FILTERED_HERE },
+  getStaticSiteDeploymentLogsV3: { search: FILTERED_HERE, filters: FILTERED_HERE, order: FILTERED_HERE },
+  listApplicationsV3: { status: LIST_FILTERS, source: LIST_FILTERS },
+  listDatabasesV3: { status: LIST_FILTERS, type: LIST_FILTERS },
+  listProcessesV3: { offset: FIRST_PAGE },
+  listApplicationDomainsV3: { offset: FIRST_PAGE },
+  listStaticSiteDomainsV3: { offset: FIRST_PAGE },
+  listDatabaseBackupsV3: { type: 'Every backup type is listed.' },
+  updateEnvironmentVariableV3: { key: BY_KEY },
+  updateStaticSiteEnvVarV3: { key: BY_KEY },
+  updateGlobalEnvVarV3: { key: BY_KEY },
+  createStaticSiteV3: {
+    is_preview_enabled: AFTER_CREATION,
+    index_file: AFTER_CREATION,
+    error_file: AFTER_CREATION,
+    allow_deploy_paths: AFTER_CREATION,
+    ignore_deploy_paths: AFTER_CREATION,
+  },
+}
+
+describe('e2e: dedicated tools cover every field of their operations', () => {
+  it('sends each query and body field, or pins why not', () => {
+    const gaps: string[] = []
+    for (const op of OPERATIONS.filter((o) => o.dedicatedTool)) {
+      const fields = [
+        ...op.params.filter((p) => p.in === 'query').map((p) => p.name),
+        ...Object.keys((op.body?.properties ?? {}) as object),
+      ]
+      const unsent = UNSENT[op.id] ?? {}
+      const used = sent.get(op.id) ?? new Set()
+      gaps.push(
+        ...fields.filter((f) => !used.has(f) && !unsent[f]).map((f) => `${op.id} (${op.dedicatedTool}): ${f}`),
+        ...Object.keys(unsent)
+          .filter((f) => !fields.includes(f) || used.has(f))
+          .map((f) => `${op.id}: ${f} is pinned as unsent but is sent or not in the spec`),
+      )
+    }
+    gaps.push(...Object.keys(UNSENT).filter((id) => !getOperation(id)?.dedicatedTool))
+    deepStrictEqual(gaps, [])
   })
 })
