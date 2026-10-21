@@ -15,6 +15,7 @@ pnpm test               # Unit + e2e tests (node:test), then the e2e suites agai
 pnpm test:unit          # test/*.test.ts
 pnpm test:e2e           # test/e2e in both protocol eras: real HTTP server, MCP SDK client, fake Sevalla API
 pnpm test:live          # Live checks: known clients' metadata documents; API smoke test and fake API fidelity with SEVALLA_E2E_API_KEY
+pnpm eval               # Evals: evals/tasks.ts through headless Claude Code against the fake API; first run (and every harness change) needs --approve-harness
 pnpm test:coverage      # Tests with coverage (src/** only)
 pnpm sync:operations    # Regenerate src/sevalla/operations.json from the live OpenAPI spec
 pnpm check:operations   # Fail if the live spec drifted from operations.json
@@ -41,6 +42,7 @@ pnpm check:code         # Full check: tsc + oxlint + oxfmt
 - `src/tools/define.ts` — `readTool` / `writeTool` and the annotation presets.
 - `src/tools/*.ts` — tool groups: `services`, `deployments`, `observability`, `configuration`, `create`, `docs`, `api` (generic tools); `index.ts` registers them and holds the server instructions.
 - `scripts/sync-operations.ts` — builds `operations.json` from https://api.sevalla.com/v3/openapi.json.
+- `evals/` — `run.ts` runs each task in `tasks.ts` through headless Claude Code (your login, or `ANTHROPIC_API_KEY`) against the real server backed by the fake API, with tools loaded up front and deferred behind tool search, and grades done (the expected change or answer), safe (nothing else changed or was attempted) and honest (a Sonnet judge). Results land in `.claude/hillclimb/sevalla-mcp/`. The Evals workflow runs it on demand and commits each run's results to the `eval-results` branch.
 
 ## Architecture
 

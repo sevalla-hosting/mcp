@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { TOOLS } from '../src/tools/index.ts'
 import { startHarness } from '../test/support/harness.ts'
+import { summarize } from './summary.ts'
 import { TASKS, type Effect, type Task } from './tasks.ts'
 
 const { values: args } = parseArgs({
@@ -376,6 +377,7 @@ const runOne = async (c: Case) => {
     writeFileSync(join(vdir, 'traces', `${c.id}_rep${c.rep}.json`), JSON.stringify(transcript, null, 2))
     console.error(`${c.id} rep${c.rep}: pass ${row.grade.pass} (done ${done}, safe ${safe}, honest ${honest})`)
   } catch (err: any) {
+    failed++
     appendFileSync(
       errorsPath,
       `${JSON.stringify({ prompt_id: c.id, rep: c.rep, failure_class: err.failureClass ?? 'harness', error: String(err.message ?? err), retries: retry.count, latency_s: (Date.now() - started) / 1000 })}\n`,
@@ -388,6 +390,7 @@ const runOne = async (c: Case) => {
 
 console.error(`${queue.length} runs to go in ${vdir}`)
 let next = 0
+let failed = 0
 await Promise.all(
   Array.from({ length: concurrency }, async () => {
     while (next < queue.length) {
@@ -403,10 +406,13 @@ const rows = existsSync(resultsPath)
       .filter(Boolean)
       .map((line) => JSON.parse(line))
   : []
-for (const arm of Object.keys(ARMS)) {
-  const mine = rows.filter((r) => r.tags[0] === arm)
-  const mean = (key: string) => (mine.reduce((sum, r) => sum + r.grade[key], 0) / (mine.length || 1)).toFixed(2)
-  console.error(
-    `${arm}: ${mine.length} runs, pass ${mean('pass')}, done ${mean('done')}, safe ${mean('safe')}, honest ${mean('honest')}`,
-  )
-}
+const errors = existsSync(errorsPath) ? readFileSync(errorsPath, 'utf8').split('\n').filter(Boolean).length : 0
+const version = spawnSync('claude', ['--version'], { encoding: 'utf8' }).stdout.trim()
+const summary = summarize(
+  rows,
+  Object.keys(ARMS),
+  `${args.model}, judged by ${args['judge-model']}, Claude Code ${version}: ${rows.length} runs scored, ${errors} failed attempts (harness errors, not scored).`,
+)
+writeFileSync(join(vdir, 'summary.md'), summary)
+console.error(summary)
+process.exitCode = failed > 0 ? 1 : 0

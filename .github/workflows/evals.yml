@@ -1,0 +1,74 @@
+name: Evals
+
+on:
+  workflow_dispatch:
+    inputs:
+      reps:
+        description: Trials per task and setup
+        default: '5'
+      only:
+        description: Only the tasks whose id matches this regular expression
+        default: ''
+
+concurrency: evals
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - name: Require the ANTHROPIC_API_KEY secret
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::Add an ANTHROPIC_API_KEY repository secret to run the evals."
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Claude Code
+        run: npm install --global @anthropic-ai/claude-code@2.1.306
+      - name: Run the evals
+        env:
+          REPS: ${{ inputs.reps }}
+          ONLY: ${{ inputs.only }}
+        run: node evals/run.ts --approve-harness --flow eval-output --reps "$REPS" --only "$ONLY"
+      - name: Summary
+        if: always()
+        run: if [ -f eval-output/baseline/summary.md ]; then cat eval-output/baseline/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload results and transcripts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: evals-${{ github.run_id }}
+          path: eval-output/baseline
+          if-no-files-found: ignore
+          retention-days: 90
+      - name: Store the results on the eval-results branch
+        if: always()
+        run: |
+          set -euo pipefail
+          src=eval-output/baseline
+          if [ ! -f "$src/results.jsonl" ]; then exit 0; fi
+          run="$(date -u +%Y-%m-%dT%H%MZ)-${GITHUB_SHA::7}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git fetch --depth 1 origin eval-results; then
+            git worktree add results FETCH_HEAD
+          else
+            git worktree add --orphan -b eval-results results
+          fi
+          mkdir -p "results/runs/$run"
+          cp "$src/results.jsonl" "$src/summary.md" "results/runs/$run/"
+          if [ -f "$src/errors.jsonl" ]; then cp "$src/errors.jsonl" "results/runs/$run/"; fi
+          git -C results add runs
+          git -C results commit -m "chore(evals): results $run"
+          git -C results push origin HEAD:eval-results
