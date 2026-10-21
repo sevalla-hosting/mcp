@@ -93,6 +93,8 @@ export const createApplication = writeTool('create', {
   },
 })
 
+const deployPaths = z.array(z.string().min(1).max(255)).min(1).max(50).optional()
+
 export const createStaticSite = writeTool('create', {
   name: 'create_static_site',
   title: 'Create Sevalla static site',
@@ -117,10 +119,18 @@ export const createStaticSite = writeTool('create', {
       root_directory: z.string().max(255).optional().describe('Repository subdirectory of the site.'),
       node_version: z.string().max(20).optional().describe('Node.js version, e.g. 22.'),
       auto_deploy: z.boolean().optional().describe('Deploy on every push.'),
+      allow_deploy_paths: deployPaths.describe('Only pushes changing these globs deploy.'),
+      ignore_deploy_paths: deployPaths.describe('Pushes changing only these globs skip deployment.'),
+      is_preview_enabled: z.boolean().optional().describe('Preview deployments for pull requests.'),
+      index_file: z.string().min(1).max(255).optional().describe('e.g. index.html'),
+      error_file: z.string().min(1).max(255).optional().describe('Not-found page, e.g. 404.html'),
       project_id: projectId,
     })
     .strict(),
   run: async (args, { api }) => {
+    if (args.allow_deploy_paths && args.ignore_deploy_paths) {
+      throw new ToolInputError('allow_deploy_paths and ignore_deploy_paths are mutually exclusive.')
+    }
     const site = await api.post<ApiRecord>('/static-sites', omitEmpty({ ...args }))
     return toolResult({
       static_site: omitEmpty({

@@ -72,15 +72,10 @@ export const ADDITIVE_OPERATIONS = new Set([
 ])
 
 export const DEDICATED_TOOLS: Record<string, string> = {
-  listApplicationsV3: 'list_services',
   listStaticSitesV3: 'list_services',
-  listDatabasesV3: 'list_services',
   getApplicationV3: 'get_application',
-  listProcessesV3: 'get_application',
   getProcessV3: 'get_application',
-  listApplicationDomainsV3: 'get_application',
   getStaticSiteV3: 'get_static_site',
-  listStaticSiteDomainsV3: 'get_static_site',
   getDatabaseV3: 'get_database',
   listDatabaseBackupsV3: 'get_database',
   listDatabaseInternalConnectionsV3: 'get_database',

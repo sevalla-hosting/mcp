@@ -103,6 +103,16 @@ describe('e2e: get_application / get_static_site / get_database / get_platform_o
     strictEqual(res.json.latest_deployment.commit, 'abcdef1')
     strictEqual(res.json.latest_deployment.commit_message, 'Fix checkout flow')
     ok(!res.text.includes('author_img'))
+    strictEqual(res.json.more, undefined)
+  })
+
+  it('names the operation that pages domains beyond the first 100', async () => {
+    h.api.override('listApplicationDomainsV3', () => ({
+      body: { data: [{ id: IDS.domain, name: 'a.example.com' }], total: 340, offset: 0, limit: 100 },
+    }))
+    const res = await mcp.call('get_application', { application_id: IDS.app })
+    strictEqual(res.json.more, '1 of 340 shown; listApplicationDomainsV3 (sevalla_api_read) pages the rest.')
+    strictEqual(last('listApplicationDomainsV3').query.limit, '100')
   })
 
   it('returns every field with detail=full', async () => {
@@ -329,6 +339,34 @@ describe('e2e: logs and metrics', () => {
     strictEqual(db.json.metrics.used_storage_bytes, 1024)
   })
 
+  it('filters HTTP metrics by request and sets the response time percentile', async () => {
+    const res = await mcp.call('get_metrics', {
+      target: 'application',
+      application_id: IDS.app,
+      metrics: ['response_time_ms', 'top_pages'],
+      status: '404',
+      path_prefix: '/api',
+      percentile: 99,
+    })
+    strictEqual(res.isError, false, res.text)
+    const filters = [
+      { key: 'attributes.edgeResponseStatus', operator: 'EQUALS', value: '404' },
+      { key: 'attributes.clientRequestPath', operator: 'STARTS_WITH', value: '/api' },
+    ]
+    deepStrictEqual(JSON.parse(last('getApplicationResponseTimeV3').query.filters ?? ''), filters)
+    strictEqual(last('getApplicationResponseTimeV3').query.percent, '99')
+    strictEqual(last('getApplicationTopPagesV3').query.percent, undefined)
+    const process = await mcp.call('get_metrics', {
+      target: 'process',
+      application_id: IDS.app,
+      process_id: IDS.process,
+      status: '5xx',
+    })
+    ok(process.text.includes('apply to applications and static sites'))
+    const noSeries = await mcp.call('get_metrics', { target: 'application', application_id: IDS.app, percentile: 95 })
+    ok(noSeries.text.includes('percentile applies to the response_time_ms metric'))
+  })
+
   it('reports missing IDs and unknown metric names', async () => {
     const missing = await mcp.call('get_metrics', { target: 'process', application_id: IDS.app })
     strictEqual(missing.isError, true)
@@ -532,6 +570,18 @@ describe('e2e: create tools', () => {
     })
   })
 
+  it('refuses both deploy path rules at once', async () => {
+    const res = await mcp.call('create_static_site', {
+      display_name: 'Docs',
+      repo_url: 'https://github.com/acme/docs',
+      default_branch: 'main',
+      allow_deploy_paths: ['docs/**'],
+      ignore_deploy_paths: ['*.md'],
+    })
+    ok(res.text.includes('mutually exclusive'))
+    strictEqual(h.api.forOperation('createStaticSiteV3').length, 0)
+  })
+
   it('creates a database, connects it and never returns the password', async () => {
     const res = await mcp.call('create_database', {
       display_name: 'Orders DB',
@@ -615,7 +665,7 @@ describe('e2e: generic API tools', () => {
   })
 
   it('routes each class only through its own tool', async () => {
-    const dedicated = await mcp.call('sevalla_api_read', { operation_id: 'listApplicationsV3' })
+    const dedicated = await mcp.call('sevalla_api_read', { operation_id: 'listStaticSitesV3' })
     ok(dedicated.text.includes('available as the list_services tool'))
     const wrongClass = await mcp.call('sevalla_api_read', { operation_id: 'createProjectV3' })
     ok(wrongClass.text.includes('run by sevalla_api_create'))
@@ -707,8 +757,9 @@ describe('e2e: every tool input reaches the API', () => {
       'slowest_requests',
       'top_pages',
     ]
-    await send('get_metrics', { target: 'application', application_id: IDS.app, metrics: http })
-    await send('get_metrics', { target: 'static_site', static_site_id: IDS.site, metrics: http })
+    const filters = { status: '5xx', request_method: 'GET', path_prefix: '/api', percentile: 95 }
+    await send('get_metrics', { target: 'application', application_id: IDS.app, metrics: http, ...filters })
+    await send('get_metrics', { target: 'static_site', static_site_id: IDS.site, metrics: http, ...filters })
     await send('get_metrics', {
       target: 'process',
       application_id: IDS.app,
@@ -814,7 +865,17 @@ describe('e2e: every tool input reaches the API', () => {
       root_directory: 'site',
       node_version: '22',
       auto_deploy: true,
+      allow_deploy_paths: ['site/**'],
+      is_preview_enabled: true,
+      index_file: 'index.html',
+      error_file: '404.html',
       project_id: IDS.project,
+    })
+    await send('create_static_site', {
+      display_name: 'Blog',
+      repo_url: 'https://github.com/acme/blog',
+      default_branch: 'main',
+      ignore_deploy_paths: ['*.md'],
     })
     await send('create_database', {
       display_name: 'Orders',
@@ -827,27 +888,20 @@ describe('e2e: every tool input reaches the API', () => {
   })
 })
 
-const WHOLE_SERVICE = 'Not exposed: get_metrics measures the whole service.'
 const AGGREGATE = 'An aggregate over the window, not a series.'
 const SORTED_HERE = 'Entries are sorted on this server; end_time reaches older ones.'
 const MATCHED_HERE =
   'Matched on this server: the API searches only the message, without client IP, country or user agent.'
 const FILTERED_HERE = 'get_deployment_logs filters and sorts the lines on this server.'
-const FIRST_PAGE = 'Only the first 100 are read.'
-const LIST_FILTERS = 'Not exposed: list_services filters by name and project.'
 const BY_KEY = 'Variables are matched by key, so an update never renames one.'
-const AFTER_CREATION = 'Not exposed: updateStaticSiteV3 (sevalla_api_update) sets it after creation.'
 
-const httpMetricGaps = (scope: string) => ({
-  [`get${scope}RequestsPerMinuteV3`]: { filters: WHOLE_SERVICE },
-  [`get${scope}ResponseTimeV3`]: { filters: WHOLE_SERVICE, percent: 'Not exposed: the API default percentile.' },
-  [`get${scope}ResponseTimeAvgV3`]: { filters: WHOLE_SERVICE, interval_in_seconds: AGGREGATE },
-  [`get${scope}SlowestRequestsV3`]: { filters: WHOLE_SERVICE, interval_in_seconds: AGGREGATE },
-  [`get${scope}StatusCodesV3`]: { filters: WHOLE_SERVICE },
-  [`get${scope}TopCountriesV3`]: { filters: WHOLE_SERVICE, interval_in_seconds: AGGREGATE },
-  [`get${scope}TopPagesV3`]: { filters: WHOLE_SERVICE, interval_in_seconds: AGGREGATE },
-  [`get${scope}TopStatusCodesV3`]: { filters: WHOLE_SERVICE, interval_in_seconds: AGGREGATE },
-})
+const httpMetricGaps = (scope: string) =>
+  Object.fromEntries(
+    ['ResponseTimeAvg', 'SlowestRequests', 'TopCountries', 'TopPages', 'TopStatusCodes'].map((metric) => [
+      `get${scope}${metric}V3`,
+      { interval_in_seconds: AGGREGATE },
+    ]),
+  )
 
 const UNSENT: Record<string, Record<string, string>> = {
   ...httpMetricGaps('Application'),
@@ -857,22 +911,10 @@ const UNSENT: Record<string, Record<string, string>> = {
   getApplicationRuntimeLogsV3: { order: SORTED_HERE },
   getApplicationDeploymentLogsV3: { search: FILTERED_HERE, filters: FILTERED_HERE, order: FILTERED_HERE },
   getStaticSiteDeploymentLogsV3: { search: FILTERED_HERE, filters: FILTERED_HERE, order: FILTERED_HERE },
-  listApplicationsV3: { status: LIST_FILTERS, source: LIST_FILTERS },
-  listDatabasesV3: { status: LIST_FILTERS, type: LIST_FILTERS },
-  listProcessesV3: { offset: FIRST_PAGE },
-  listApplicationDomainsV3: { offset: FIRST_PAGE },
-  listStaticSiteDomainsV3: { offset: FIRST_PAGE },
   listDatabaseBackupsV3: { type: 'Every backup type is listed.' },
   updateEnvironmentVariableV3: { key: BY_KEY },
   updateStaticSiteEnvVarV3: { key: BY_KEY },
   updateGlobalEnvVarV3: { key: BY_KEY },
-  createStaticSiteV3: {
-    is_preview_enabled: AFTER_CREATION,
-    index_file: AFTER_CREATION,
-    error_file: AFTER_CREATION,
-    allow_deploy_paths: AFTER_CREATION,
-    ignore_deploy_paths: AFTER_CREATION,
-  },
 }
 
 describe('e2e: dedicated tools cover every field of their operations', () => {

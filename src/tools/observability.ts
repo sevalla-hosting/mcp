@@ -57,6 +57,8 @@ const logHeader = (label: string, window: TimeWindow, shown: number, matching: n
 
 const SEVERITIES = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const
 
+const REQUEST_METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as const
+
 export const searchRuntimeLogs = readTool({
   name: 'search_runtime_logs',
   title: 'Search Sevalla runtime logs',
@@ -148,10 +150,7 @@ export const searchAccessLogs = readTool({
       service_id: uuid('Application or static site ID (list_services).'),
       ...timeWindow,
       status: z.string().optional().describe('Status code (404) or class (5xx).'),
-      request_method: z
-        .enum(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])
-        .optional()
-        .describe('Only requests with this method.'),
+      request_method: z.enum(REQUEST_METHODS).optional().describe('Only requests with this method.'),
       path_prefix: z.string().min(1).max(500).optional().describe('Only paths starting with this text.'),
       search: z.string().min(1).max(200).optional().describe('Only entries containing this text (case-insensitive).'),
       limit: z.number().int().min(1).max(500).default(100).describe('Maximum entries returned.'),
@@ -183,11 +182,12 @@ interface MetricSpec {
   shape: 'series' | 'value' | 'list' | 'status_series' | 'events' | 'average'
   interval?: boolean
   limit?: boolean
+  percentile?: boolean
 }
 
 const HTTP_METRICS: Record<string, MetricSpec> = {
   requests_per_minute: { path: 'requests-per-minute', shape: 'series', interval: true },
-  response_time_ms: { path: 'response-time', shape: 'series', interval: true },
+  response_time_ms: { path: 'response-time', shape: 'series', interval: true, percentile: true },
   average_response_time_ms: { path: 'response-time-avg', shape: 'average' },
   status_codes: { path: 'status-codes', shape: 'status_series', interval: true },
   top_status_codes: { path: 'top-status-codes', shape: 'list', limit: true },
@@ -296,6 +296,18 @@ export const getMetrics = readTool({
         .describe(
           'Default: a standard set. application, static_site: requests_per_minute, response_time_ms, average_response_time_ms, status_codes, top_status_codes, top_countries, slowest_requests, top_pages. process: cpu_usage_cores, cpu_limit_cores, memory_usage_bytes, memory_limit_bytes, instance_count, exit_codes. database: cpu_usage_cores, cpu_limit_cores, memory_usage_bytes, memory_limit_bytes, storage_usage_bytes, storage_limit_bytes, allocated_storage_bytes, used_storage_bytes.',
         ),
+      status: z
+        .string()
+        .optional()
+        .describe('application, static_site: only requests with this status code (404) or class (5xx).'),
+      request_method: z.enum(REQUEST_METHODS).optional().describe('application, static_site: only this method.'),
+      path_prefix: z
+        .string()
+        .min(1)
+        .max(500)
+        .optional()
+        .describe('application, static_site: only paths starting with this text.'),
+      percentile: z.number().int().min(1).max(99).optional().describe('Percentile of response_time_ms, e.g. 95.'),
       ...timeWindow,
     })
     .strict(),
@@ -308,6 +320,13 @@ export const getMetrics = readTool({
       throw new ToolInputError(
         `Metrics not available for target ${target}: ${invalid.join(', ')}. Available: ${Object.keys(available).join(', ')}.`,
       )
+    }
+    const filters = accessLogFilters(args.status, args.request_method, args.path_prefix)
+    if (filters.length > 0 && (target === 'process' || target === 'database')) {
+      throw new ToolInputError('status, request_method and path_prefix apply to applications and static sites.')
+    }
+    if (args.percentile !== undefined && !names.includes('response_time_ms')) {
+      throw new ToolInputError('percentile applies to the response_time_ms metric, which metrics does not include.')
     }
     const base = metricsBase(target, args)
     const window = resolveWindow(args)
@@ -323,6 +342,8 @@ export const getMetrics = readTool({
                 to: window.to,
                 interval_in_seconds: spec.interval ? interval : undefined,
                 limit: spec.limit ? 10 : undefined,
+                filters: filters.length > 0 ? JSON.stringify(filters) : undefined,
+                percent: spec.percentile ? args.percentile : undefined,
               }
         try {
           return [name, shapeMetric(spec, await api.get(`${base}/${spec.path}`, query))] as const
