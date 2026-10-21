@@ -63,7 +63,7 @@ export const TASKS: Task[] = [
     source: 'routing pair',
     prompt: "What was api-prod's p95 response time over the last hour?",
     approve: [],
-    done: (_effects, answer) => /\b950\b|\b0\.95\s*s/.test(answer),
+    done: (_effects, answer) => /(^|\D)950(?!\d)|\b0\.95\s*s/.test(answer),
     expected: () => false,
   },
   {
