@@ -1099,7 +1099,7 @@
       "path": "/applications/{id}/deployments",
       "tag": "Applications",
       "summary": "Trigger deployment",
-      "description": "Trigger a new deployment for an application. By default, deploys the latest commit on the default branch. You can optionally specify a different branch, a Docker image, or restart from the last successful deployment. The deployment runs asynchronously - use the get deployment endpoint to track its progress.",
+      "description": "Trigger a new deployment for an application. By default, deploys the latest commit on the default branch. You can optionally specify a different branch, a specific commit, a Docker image, or restart from the last successful deployment. You can also rebuild without the build cache. The deployment runs asynchronously - use the get deployment endpoint to track its progress.",
       "params": [
         {
           "name": "id",
@@ -1120,6 +1120,10 @@
             "type": "string",
             "description": "Git branch to deploy. When omitted, the application default branch is used. Only applies to Git-based applications."
           },
+          "commit_sha": {
+            "type": "string",
+            "description": "Full 40 character SHA of the commit to deploy. When omitted, the latest commit on the branch is deployed. The commit must be reachable from `branch` (or the default branch when `branch` is omitted), …"
+          },
           "docker_image": {
             "type": "string",
             "description": "Docker image reference to deploy (e.g., `nginx:latest`). Only applies to applications with `dockerImage` source."
@@ -1127,6 +1131,11 @@
           "is_restart": {
             "type": "boolean",
             "description": "When true, redeploys using the existing build artifact from the last successful deployment, skipping the build step. Useful when you have updated runtime-level configuration and do not need to rebuil…",
+            "default": false
+          },
+          "skip_build_cache": {
+            "type": "boolean",
+            "description": "When true, every layer is rebuilt from scratch instead of being reused from the build cache. Use it to pick up updated system packages or dependencies that a cached build would keep. If the applicati…",
             "default": false
           }
         }
@@ -3020,7 +3029,7 @@
           },
           "active_deadline_seconds": {
             "type": "integer",
-            "description": "Maximum run time in seconds for each scheduled run before it is terminated. Leave unset or send 0 for no limit. Only applicable to cron processes.",
+            "description": "Maximum run time in seconds. For cron processes, each scheduled run is terminated when it runs longer than this. Leave unset or send 0 for no limit. For job processes, the job is stopped and the depl…",
             "minimum": 0,
             "maximum": 9007199254740991
           },
@@ -3500,7 +3509,7 @@
           },
           "active_deadline_seconds": {
             "type": "integer",
-            "description": "Maximum run time in seconds for each scheduled run before it is terminated. Send 0 to turn off an existing limit. Only applicable to cron processes.",
+            "description": "Maximum run time in seconds. For cron processes, each scheduled run is terminated when it runs longer than this. Send 0 to turn off an existing limit. For job processes, the job is stopped and the de…",
             "minimum": 0,
             "maximum": 9007199254740991
           },
@@ -5070,7 +5079,7 @@
           },
           "resource_type_id": {
             "type": "string",
-            "description": "Identifier of the database resource type (machine size) to change to. Changing the resource type triggers an update operation."
+            "description": "Identifier of the database resource type (machine size) to change to. Changing the resource type triggers an update operation. On OCI clusters, changing a DB1 database to a larger resource type moves…"
           },
           "project_id": {
             "type": "string",
@@ -5428,7 +5437,7 @@
       "path": "/databases/{id}/backups",
       "tag": "Databases",
       "summary": "Create database backup",
-      "description": "Create a manual backup of a database. The backup is created asynchronously and will appear in the backup list once completed. Manual backups have a 14-day retention period. Not available on OCI clusters - those use external backups and this endpoint returns a 400 there.",
+      "description": "Create a manual backup of a database. The backup is created asynchronously and will appear in the backup list once completed. Manual backups have a 14-day retention period. Databases created on OCI clusters use external backups instead, and this endpoint returns a 400 for them.",
       "params": [
         {
           "name": "id",
