@@ -53,6 +53,8 @@ describe('eval task checks', () => {
     strictEqual(task('deploy-commit').done([deploy({ branch: 'main' })], ''), false)
     strictEqual(task('deploy-commit').expected(effect('rollbackDeploymentV3', `${app}/deployments/rollback`)), false)
     strictEqual(task('deploy-commit').expected(deploy({ is_restart: true })), false)
+    strictEqual(task('deploy-commit').expected(deploy({ branch: 'main' })), false)
+    strictEqual(task('deploy-commit').expected(deploy({ branch: 'main', commit_sha: sha })), true)
   })
 
   it('wants a rebuild without the build cache, not a restart', () => {
