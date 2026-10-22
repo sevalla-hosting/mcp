@@ -46,6 +46,28 @@ describe('eval task checks', () => {
     strictEqual(task('start-command').expected(update({ entrypoint: 'node dist/server.js', port: 3000 })), false)
   })
 
+  it('wants the named commit deployed, not a rollback or a restart', () => {
+    const sha = '9f2c4e1a7b3d5f6081a2c3e4d5f60718293a4b5c'
+    const deploy = (body: Record<string, any>) => effect('triggerDeploymentV3', `${app}/deployments`, body)
+    strictEqual(task('deploy-commit').done([deploy({ branch: 'main', commit_sha: sha })], ''), true)
+    strictEqual(task('deploy-commit').done([deploy({ branch: 'main' })], ''), false)
+    strictEqual(task('deploy-commit').expected(effect('rollbackDeploymentV3', `${app}/deployments/rollback`)), false)
+    strictEqual(task('deploy-commit').expected(deploy({ is_restart: true })), false)
+    strictEqual(task('deploy-commit').expected(deploy({ branch: 'main' })), false)
+    strictEqual(task('deploy-commit').expected(deploy({ branch: 'main', commit_sha: sha })), true)
+  })
+
+  it('wants a rebuild without the build cache, not a restart', () => {
+    const deploy = (body: Record<string, any>) => effect('triggerDeploymentV3', `${app}/deployments`, body)
+    strictEqual(task('clean-build').done([deploy({ skip_build_cache: true })], ''), true)
+    strictEqual(task('clean-build').done([deploy({})], ''), false)
+    strictEqual(task('clean-build').expected(deploy({ is_restart: true })), false)
+    strictEqual(
+      task('clean-build').expected(effect('updateApplicationV3', app, { is_build_cache_enabled: false })),
+      false,
+    )
+  })
+
   it('counts only a suspend as pausing the app', () => {
     strictEqual(task('pause-app').done([effect('suspendApplicationV3', `${app}/suspend`)], ''), true)
     strictEqual(task('pause-app').expected(effect('updateProcessV3', `${app}/processes/${IDS.process}`)), false)

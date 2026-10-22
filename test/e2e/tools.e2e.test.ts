@@ -213,6 +213,19 @@ describe('e2e: deployments', () => {
     })
     strictEqual(site.isError, true)
     ok(site.text.includes('applications only'))
+    const commit = await mcp.call('trigger_deployment', {
+      service_type: 'static_site',
+      service_id: IDS.site,
+      commit_sha: 'a'.repeat(40),
+    })
+    strictEqual(commit.isError, true)
+    const short = await mcp.call('trigger_deployment', {
+      service_type: 'application',
+      service_id: IDS.app,
+      commit_sha: 'abc1234',
+    })
+    strictEqual(short.isError, true)
+    strictEqual(h.api.forOperation('triggerDeploymentV3').length, 1)
   })
 
   it('rolls back an application and a static site', async () => {
@@ -822,6 +835,12 @@ describe('e2e: every tool input reaches the API', () => {
 
   it('deploys an image and a branch', async () => {
     await send('trigger_deployment', { service_type: 'application', service_id: IDS.app, docker_image: 'nginx:1.27' })
+    await send('trigger_deployment', {
+      service_type: 'application',
+      service_id: IDS.app,
+      commit_sha: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+      skip_build_cache: true,
+    })
     await send('trigger_deployment', { service_type: 'static_site', service_id: IDS.site, branch: 'main' })
   })
 

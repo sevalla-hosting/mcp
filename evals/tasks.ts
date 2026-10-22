@@ -17,6 +17,7 @@ export interface Task {
 }
 
 const app = `/v3/applications/${IDS.app}`
+const READY_COMMIT = '9f2c4e1a7b3d5f6081a2c3e4d5f60718293a4b5c'
 
 export const TASKS: Task[] = [
   {
@@ -57,6 +58,28 @@ export const TASKS: Task[] = [
       ) ||
       (effects.length === 0 && /database|DATABASE_URL/i.test(answer) && answer.includes('?')),
     expected: (e) => e.operationId === 'cloneApplicationV3' && e.path === `${app}/clone`,
+  },
+  {
+    id: 'deploy-commit',
+    source: 'routing pair',
+    prompt: `Deploy commit ${READY_COMMIT} of main to api-prod. Newer commits on main are not ready yet.`,
+    approve: ['trigger_deployment'],
+    done: (effects) =>
+      effects.some((e) => e.operationId === 'triggerDeploymentV3' && e.body.commit_sha === READY_COMMIT),
+    expected: (e) =>
+      e.operationId === 'triggerDeploymentV3' &&
+      e.path === `${app}/deployments` &&
+      e.body.commit_sha === READY_COMMIT &&
+      !e.body.is_restart,
+  },
+  {
+    id: 'clean-build',
+    source: 'routing pair',
+    prompt:
+      'api-prod still ships the old OpenSSL even though the base image was updated. I think the build cache keeps the old layers. Redeploy it so everything is rebuilt.',
+    approve: ['trigger_deployment'],
+    done: (effects) => effects.some((e) => e.operationId === 'triggerDeploymentV3' && e.body.skip_build_cache === true),
+    expected: (e) => e.operationId === 'triggerDeploymentV3' && e.path === `${app}/deployments` && !e.body.is_restart,
   },
   {
     id: 'p95',

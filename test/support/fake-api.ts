@@ -506,6 +506,7 @@ export const startFakeApi = async (): Promise<FakeApi> => {
     triggerDeploymentV3: ({ body }) => ({
       body: deployment(IDS.newResource, 'waiting', 0, {
         branch: body.branch ?? 'main',
+        commit_sha: body.commit_sha ?? 'abcdef1234567890',
         started_at: null,
         finished_at: null,
       }),

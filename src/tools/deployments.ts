@@ -102,21 +102,33 @@ export const triggerDeployment = writeTool('update', {
   name: 'trigger_deployment',
   title: 'Deploy Sevalla service',
   description:
-    'Starts a deployment of a Sevalla application or static site: by default the latest commit of the default branch. It runs asynchronously and replaces the running version when it succeeds; get_deployment reports progress.',
+    'Starts a deployment of a Sevalla application or static site: by default the latest commit of the default branch. Applications can also deploy a specific commit or rebuild without the build cache. It runs asynchronously and replaces the running version when it succeeds; get_deployment reports progress.',
   input: z
     .object({
       service_type: serviceType,
       service_id: serviceId,
       branch: z.string().min(1).max(255).optional().describe('Branch to deploy instead of the default branch.'),
+      commit_sha: z
+        .string()
+        .regex(/^[0-9a-f]{40}$/)
+        .optional()
+        .describe('Applications only: full 40-character SHA of a commit on the branch.'),
       docker_image: z.string().min(1).max(512).optional().describe('Image to deploy, for Docker-based applications.'),
       restart: z.boolean().optional().describe('Applications only: redeploy the current build without rebuilding.'),
+      skip_build_cache: z.boolean().optional().describe('Applications only: rebuild without the build cache.'),
     })
     .strict(),
-  run: async ({ service_type, service_id, branch, docker_image, restart }, { api }) => {
-    if (service_type === 'static_site' && (docker_image !== undefined || restart !== undefined)) {
-      throw new ToolInputError('docker_image and restart apply to applications only.')
+  run: async ({ service_type, service_id, branch, commit_sha, docker_image, restart, skip_build_cache }, { api }) => {
+    if (
+      service_type === 'static_site' &&
+      [commit_sha, docker_image, restart, skip_build_cache].some((v) => v !== undefined)
+    ) {
+      throw new ToolInputError('commit_sha, docker_image, restart and skip_build_cache apply to applications only.')
     }
-    const body = service_type === 'application' ? { branch, docker_image, is_restart: restart } : { branch }
+    const body =
+      service_type === 'application'
+        ? { branch, commit_sha, docker_image, is_restart: restart, skip_build_cache }
+        : { branch }
     const deployment = await api.post<ApiRecord>(`${serviceBase(service_type, service_id)}/deployments`, body)
     return toolResult({ deployment: summarizeDeployment(deployment), next: 'get_deployment reports progress.' })
   },
