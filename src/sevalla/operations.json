@@ -484,7 +484,7 @@
         "properties": {
           "key": {
             "type": "string",
-            "description": "Name of the environment variable. Must be unique across all global variables in the company.",
+            "description": "Name of the environment variable. Must be unique across all global variables in the company. May contain only letters, digits, \"-\", \"_\", \".\" or \":\".",
             "minLength": 1,
             "maxLength": 255
           },
@@ -534,7 +534,7 @@
         "properties": {
           "key": {
             "type": "string",
-            "description": "New name for the environment variable",
+            "description": "New name for the environment variable. May contain only letters, digits, \"-\", \"_\", \".\" or \":\".",
             "minLength": 1,
             "maxLength": 255
           },
@@ -706,7 +706,7 @@
                 },
                 "source": {
                   "type": "string",
-                  "description": "Buildpack source URL or identifier",
+                  "description": "Buildpack source, either a buildpack ID or a URL. It must start with a letter or digit and may contain only letters, digits and `-._/:@+=?&%~`.",
                   "maxLength": 500
                 }
               },
@@ -1770,7 +1770,7 @@
         "properties": {
           "key": {
             "type": "string",
-            "description": "Name of the environment variable. Must be unique within the application scope.",
+            "description": "Name of the environment variable. Must be unique within the application scope. May contain only letters, digits, \"-\", \"_\", \".\" or \":\".",
             "minLength": 1,
             "maxLength": 255
           },
@@ -1831,7 +1831,7 @@
         "properties": {
           "key": {
             "type": "string",
-            "description": "New name for the environment variable",
+            "description": "New name for the environment variable. May contain only letters, digits, \"-\", \"_\", \".\" or \":\".",
             "minLength": 1,
             "maxLength": 255
           },
@@ -2887,7 +2887,7 @@
         "properties": {
           "display_name": {
             "type": "string",
-            "description": "Human-readable name for the process shown in the dashboard",
+            "description": "Human-readable name for the process shown in the dashboard. Cannot contain backticks, dollar signs, double quotes, backslashes or control characters.",
             "minLength": 1,
             "maxLength": 255
           },
@@ -3363,7 +3363,7 @@
         "properties": {
           "display_name": {
             "type": "string",
-            "description": "Human-readable name for the process shown in the dashboard",
+            "description": "Human-readable name for the process shown in the dashboard. Cannot contain backticks, dollar signs, double quotes, backslashes or control characters.",
             "minLength": 1,
             "maxLength": 255
           },
@@ -3475,7 +3475,7 @@
                 "required": ["type", "config"]
               }
             ],
-            "description": "Scaling configuration for the process"
+            "description": "Scaling configuration for the process. A process with a disk can only use manual scaling with at most one instance."
           },
           "port": {
             "type": "integer",
@@ -3778,6 +3778,90 @@
       "tag": "Applications",
       "summary": "Delete process",
       "description": "Delete a non-web process from an application. The web process cannot be deleted. Deletion is performed asynchronously - the process is queued for removal and will be fully deleted after the next deployment.",
+      "params": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Application identifier",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        {
+          "name": "process_id",
+          "in": "path",
+          "required": true,
+          "description": "Process identifier",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        }
+      ],
+      "body": null,
+      "bodyRequired": false,
+      "permissions": ["APP:UPDATE"]
+    },
+    {
+      "id": "updateProcessDiskV3",
+      "method": "PUT",
+      "path": "/applications/{id}/processes/{process_id}/disk",
+      "tag": "Applications",
+      "summary": "Attach or update process disk",
+      "description": "Attach a persistent disk to a web or worker process, or change the size or mount path of its disk. A disk can grow but cannot shrink. A disk can only be mounted by one instance, so if the process uses more than one instance or horizontal scaling, it is switched to manual scaling with one instance. The change takes effect on the next deployment, and the disk is billed while it exists.",
+      "params": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Application identifier",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        {
+          "name": "process_id",
+          "in": "path",
+          "required": true,
+          "description": "Process identifier",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        }
+      ],
+      "body": {
+        "type": "object",
+        "properties": {
+          "resource_type_id": {
+            "type": "string",
+            "description": "Identifier of the disk resource type, which sets the disk size. Use the List Disk Resource Types endpoint to retrieve available options. A disk can grow but cannot shrink.",
+            "minLength": 1
+          },
+          "mount_path": {
+            "type": "string",
+            "description": "Path inside the container where the disk is mounted. Only letters, numbers, `-`, `_`, `.` and `/` are allowed, and `/etc`, `/var`, `/lib`, `/usr/local`, `/mnt`, `/root`, `/app`, `/workspace` and `/la…"
+          }
+        },
+        "required": ["resource_type_id", "mount_path"]
+      },
+      "bodyRequired": true,
+      "permissions": ["APP:UPDATE"]
+    },
+    {
+      "id": "deleteProcessDiskV3",
+      "method": "DELETE",
+      "path": "/applications/{id}/processes/{process_id}/disk",
+      "tag": "Applications",
+      "summary": "Detach process disk",
+      "description": "Detach the persistent disk from a process and permanently delete the data on it. This cannot be undone. The disk is removed once the running instance stops using it, so deploy the application to finish the change.",
       "params": [
         {
           "name": "id",
@@ -8058,7 +8142,7 @@
       "path": "/pipelines/{id}/preview",
       "tag": "Pipelines",
       "summary": "Update pipeline preview settings",
-      "description": "Update the preview stage configuration for a pipeline. You can change the auto-create behavior, stale app cleanup settings, or switch the connected Git repository. Turning on auto_create_app requires the preview app settings to be configured in the dashboard first.",
+      "description": "Update the preview stage configuration for a pipeline. You can set the preview app settings (cluster, build, processes, TCP proxies, disks, hibernation, environment variables), change the auto-create behavior and stale app cleanup, or switch the connected Git repository. Fields you leave out keep their current values, but preview_app replaces the whole preview app configuration. Turning on auto_c…",
       "params": [
         {
           "name": "id",
@@ -8082,7 +8166,7 @@
           },
           "auto_create_app": {
             "type": "boolean",
-            "description": "Automatically create a preview app when a pull request is opened. Turning this on requires the preview app settings (cluster, processes, environment variables) to be configured in the dashboard first…"
+            "description": "Automatically create a preview app when a pull request is opened. Turning this on requires the preview app settings, either sent in preview_app or saved earlier. Returns 400 when they are missing."
           },
           "delete_stale_apps": {
             "type": "boolean",
@@ -8093,8 +8177,453 @@
             "description": "Number of days after the last deployment before a preview app is considered stale",
             "minimum": 1,
             "maximum": 365
+          },
+          "preview_app": {
+            "type": "object",
+            "description": "Configuration that every new preview app is created from. Sending it replaces the whole previous configuration, including anything set in the dashboard. Preview apps that already exist are not change…",
+            "properties": {
+              "cluster_id": {
+                "type": "string",
+                "description": "Identifier of the cluster (data center location) where preview apps are created.",
+                "format": "uuid"
+              },
+              "hibernation_enabled": {
+                "type": "boolean",
+                "description": "Whether preview apps hibernate (scale down to zero) after a period of inactivity. Defaults to true. Must be false when any process uses horizontal scaling."
+              },
+              "hibernate_after_seconds": {
+                "type": "integer",
+                "description": "Number of seconds of inactivity before a preview app is hibernated. Only applies when hibernation is enabled. Defaults to 300.",
+                "minimum": 1,
+                "maximum": 604800
+              },
+              "build_type": {
+                "type": "string",
+                "description": "Build strategy for preview apps. `nixpacks` - auto-detected build system. `railpack` - auto-detected build system, successor to Nixpacks. `dockerfile` - build using a Dockerfile. `pack` - build using…",
+                "enum": ["dockerfile", "pack", "nixpacks", "railpack"]
+              },
+              "build_path": {
+                "type": "string",
+                "description": "Relative path to the build directory within the repository. Defaults to the repository root."
+              },
+              "dockerfile_path": {
+                "type": "string",
+                "description": "Relative path to the Dockerfile within the repository. Only applies when build type is `dockerfile`."
+              },
+              "docker_context": {
+                "type": "string",
+                "description": "Docker build context path relative to the repository root. Only applies when build type is `dockerfile`."
+              },
+              "processes": {
+                "type": "array",
+                "description": "Processes every preview app starts with. At most one can be a `web` process.",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "display_name": {
+                      "type": "string",
+                      "description": "Human-readable name for the process shown in the dashboard. Cannot contain backticks, dollar signs, double quotes, backslashes or control characters.",
+                      "minLength": 1,
+                      "maxLength": 255
+                    },
+                    "type": {
+                      "type": "string",
+                      "description": "Process runtime type. `web` - HTTP server process that handles incoming web traffic. `worker` - background process that runs continuously. `cron` - scheduled process that runs at specified intervals.…",
+                      "enum": ["web", "worker", "cron", "job"]
+                    },
+                    "entrypoint": {
+                      "type": "string",
+                      "description": "Command used to start the process. If omitted, defaults to an empty string.",
+                      "maxLength": 1024
+                    },
+                    "port": {
+                      "type": "integer",
+                      "description": "Port number the process listens on for incoming connections",
+                      "minimum": 1,
+                      "maximum": 65535
+                    },
+                    "resource_type_id": {
+                      "type": "string",
+                      "description": "Identifier of the process resource type (machine size) to assign. Use the List Process Resource Types endpoint to retrieve available options."
+                    },
+                    "scaling_strategy": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "description": "Manual scaling type",
+                              "enum": ["manual"]
+                            },
+                            "config": {
+                              "type": "object",
+                              "description": "Manual scaling configuration"
+                            }
+                          },
+                          "required": ["type", "config"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "description": "Horizontal auto-scaling type",
+                              "enum": ["horizontal"]
+                            },
+                            "config": {
+                              "type": "object",
+                              "description": "Horizontal auto-scaling configuration"
+                            }
+                          },
+                          "required": ["type", "config"]
+                        }
+                      ],
+                      "description": "Scaling configuration for the process"
+                    },
+                    "schedule": {
+                      "type": "string",
+                      "description": "Cron expression defining the execution schedule. Required for cron processes.",
+                      "maxLength": 100
+                    },
+                    "job_start_policy": {
+                      "type": "string",
+                      "description": "When the job process should run relative to deployments. `beforeDeployment` - run after the build and before the new version of the other processes rolls out. If the job fails, the deployment fails a…",
+                      "enum": ["beforeDeployment", "afterSuccessDeployment", "afterFailedDeployment"]
+                    },
+                    "liveness_probe": {
+                      "type": "object",
+                      "description": "Kubernetes liveness probe configuration. Only applicable to web processes.",
+                      "properties": {
+                        "exec": {
+                          "type": "object",
+                          "description": "Exec-based probe - runs a command inside the container",
+                          "properties": {
+                            "command": {
+                              "type": "array",
+                              "description": "Command to execute inside the container"
+                            }
+                          },
+                          "required": ["command"],
+                          "nullable": true
+                        },
+                        "httpGet": {
+                          "type": "object",
+                          "description": "HTTP GET probe - performs an HTTP GET request",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "description": "Path to access on the HTTP server",
+                              "nullable": true
+                            },
+                            "port": {
+                              "type": "integer",
+                              "description": "Port number to access on the container",
+                              "minimum": 1,
+                              "maximum": 65535,
+                              "nullable": true
+                            },
+                            "host": {
+                              "type": "string",
+                              "description": "Host name to connect to",
+                              "nullable": true
+                            },
+                            "scheme": {
+                              "type": "string",
+                              "description": "Scheme to use for connecting to the host. `HTTP` or `HTTPS`",
+                              "enum": ["HTTP", "HTTPS"],
+                              "nullable": true
+                            },
+                            "httpHeaders": {
+                              "type": "array",
+                              "description": "Custom headers to set in the request",
+                              "nullable": true
+                            }
+                          },
+                          "nullable": true
+                        },
+                        "tcpSocket": {
+                          "type": "object",
+                          "description": "TCP socket probe - checks if a TCP port is open",
+                          "properties": {
+                            "host": {
+                              "type": "string",
+                              "description": "Host name to connect to",
+                              "nullable": true
+                            },
+                            "port": {
+                              "type": "integer",
+                              "description": "Port number to connect to",
+                              "minimum": 1,
+                              "maximum": 65535
+                            }
+                          },
+                          "required": ["port"],
+                          "nullable": true
+                        },
+                        "initialDelaySeconds": {
+                          "type": "integer",
+                          "description": "Seconds after the container starts before the probe is initiated",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "periodSeconds": {
+                          "type": "integer",
+                          "description": "How often in seconds to perform the probe",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "timeoutSeconds": {
+                          "type": "integer",
+                          "description": "Seconds after which the probe times out",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "successThreshold": {
+                          "type": "integer",
+                          "description": "Minimum consecutive successes for the probe to be considered successful",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "failureThreshold": {
+                          "type": "integer",
+                          "description": "Minimum consecutive failures for the probe to be considered failed",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "readiness_probe": {
+                      "type": "object",
+                      "description": "Kubernetes readiness probe configuration. Only applicable to web processes.",
+                      "properties": {
+                        "exec": {
+                          "type": "object",
+                          "description": "Exec-based probe - runs a command inside the container",
+                          "properties": {
+                            "command": {
+                              "type": "array",
+                              "description": "Command to execute inside the container"
+                            }
+                          },
+                          "required": ["command"],
+                          "nullable": true
+                        },
+                        "httpGet": {
+                          "type": "object",
+                          "description": "HTTP GET probe - performs an HTTP GET request",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "description": "Path to access on the HTTP server",
+                              "nullable": true
+                            },
+                            "port": {
+                              "type": "integer",
+                              "description": "Port number to access on the container",
+                              "minimum": 1,
+                              "maximum": 65535,
+                              "nullable": true
+                            },
+                            "host": {
+                              "type": "string",
+                              "description": "Host name to connect to",
+                              "nullable": true
+                            },
+                            "scheme": {
+                              "type": "string",
+                              "description": "Scheme to use for connecting to the host. `HTTP` or `HTTPS`",
+                              "enum": ["HTTP", "HTTPS"],
+                              "nullable": true
+                            },
+                            "httpHeaders": {
+                              "type": "array",
+                              "description": "Custom headers to set in the request",
+                              "nullable": true
+                            }
+                          },
+                          "nullable": true
+                        },
+                        "tcpSocket": {
+                          "type": "object",
+                          "description": "TCP socket probe - checks if a TCP port is open",
+                          "properties": {
+                            "host": {
+                              "type": "string",
+                              "description": "Host name to connect to",
+                              "nullable": true
+                            },
+                            "port": {
+                              "type": "integer",
+                              "description": "Port number to connect to",
+                              "minimum": 1,
+                              "maximum": 65535
+                            }
+                          },
+                          "required": ["port"],
+                          "nullable": true
+                        },
+                        "initialDelaySeconds": {
+                          "type": "integer",
+                          "description": "Seconds after the container starts before the probe is initiated",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "periodSeconds": {
+                          "type": "integer",
+                          "description": "How often in seconds to perform the probe",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "timeoutSeconds": {
+                          "type": "integer",
+                          "description": "Seconds after which the probe times out",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "successThreshold": {
+                          "type": "integer",
+                          "description": "Minimum consecutive successes for the probe to be considered successful",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "failureThreshold": {
+                          "type": "integer",
+                          "description": "Minimum consecutive failures for the probe to be considered failed",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "disk": {
+                      "type": "object",
+                      "description": "Persistent disk the process gets on every preview app. Only web and worker processes can have a disk, and they must use manual scaling with at most one instance.",
+                      "properties": {
+                        "resource_type_id": {
+                          "type": "string",
+                          "description": "Identifier of the disk resource type, which sets the disk size. Use the List Disk Resource Types endpoint to retrieve available options. A disk can grow but cannot shrink.",
+                          "minLength": 1
+                        },
+                        "mount_path": {
+                          "type": "string",
+                          "description": "Path inside the container where the disk is mounted. Only letters, numbers, `-`, `_`, `.` and `/` are allowed, and `/etc`, `/var`, `/lib`, `/usr/local`, `/mnt`, `/root`, `/app`, `/workspace` and `/la…"
+                        }
+                      },
+                      "required": ["resource_type_id", "mount_path"]
+                    },
+                    "tcp_proxies": {
+                      "type": "array",
+                      "description": "Ports of this process to expose on every preview app",
+                      "default": [],
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "port": {
+                            "type": "integer",
+                            "description": "Container port of this process to expose",
+                            "minimum": 1,
+                            "maximum": 65535
+                          },
+                          "is_public": {
+                            "type": "boolean",
+                            "description": "Where the port is reachable. `true` - from the internet through a TCP proxy with its own public hostname and port. `false` - only from inside the cluster, as a private port. Defaults to false.",
+                            "default": false
+                          }
+                        },
+                        "required": ["port"]
+                      }
+                    }
+                  },
+                  "required": ["display_name", "type", "resource_type_id", "scaling_strategy"]
+                }
+              },
+              "environment_variables": {
+                "type": "array",
+                "description": "Environment variables every preview app starts with. Each key can be used only once.",
+                "default": [],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "description": "Name of the environment variable. May contain only letters, digits, \"-\", \"_\", \".\" or \":\".",
+                      "minLength": 1,
+                      "maxLength": 255
+                    },
+                    "value": {
+                      "type": "string",
+                      "description": "Value of the environment variable. Stored encrypted at rest.",
+                      "maxLength": 32768
+                    },
+                    "is_runtime": {
+                      "type": "boolean",
+                      "description": "Whether this variable is available at runtime. Defaults to true.",
+                      "default": true
+                    },
+                    "is_buildtime": {
+                      "type": "boolean",
+                      "description": "Whether this variable is available during the build step. Defaults to true.",
+                      "default": true
+                    }
+                  },
+                  "required": ["key", "value"]
+                }
+              }
+            },
+            "required": ["cluster_id", "processes"]
           }
         }
+      },
+      "bodyRequired": true,
+      "permissions": ["PIPELINE:UPDATE"]
+    },
+    {
+      "id": "createPipelinePreviewAppV3",
+      "method": "POST",
+      "path": "/pipelines/{id}/preview/apps",
+      "tag": "Pipelines",
+      "summary": "Create preview app",
+      "description": "Create a preview app for a branch or pull request in the pipeline preview stage. The app is created from the preview app settings and its first deployment of the latest commit on the branch starts right away, so this returns before the app is live. Use the application deployment endpoints to follow the progress. Preview must be enabled and the preview app settings configured first. Each preview a…",
+      "params": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Pipeline identifier",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        }
+      ],
+      "body": {
+        "type": "object",
+        "properties": {
+          "branch": {
+            "type": "string",
+            "description": "Git branch the preview app is built from and redeployed on every push",
+            "minLength": 1
+          },
+          "pull_request_number": {
+            "type": "integer",
+            "description": "Pull request the preview app belongs to. When set, the app is named after the pull request and is deleted when the pull request is merged or closed.",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": ["branch"]
       },
       "bodyRequired": true,
       "permissions": ["PIPELINE:UPDATE"]
@@ -8129,7 +8658,7 @@
       "path": "/pipelines/{id}/preview/enable",
       "tag": "Pipelines",
       "summary": "Enable pipeline preview",
-      "description": "Enable preview apps for a pipeline. When enabled, the pipeline can create ephemeral preview environments for pull requests. If the pipeline does not have a Git repository configured, you must provide a repo_url to connect one. Preview app settings are configured in the dashboard, so turn on auto_create_app afterwards with the update preview settings endpoint.",
+      "description": "Enable preview apps for a pipeline. When enabled, the pipeline can create ephemeral preview environments for pull requests. If the pipeline does not have a Git repository configured, you must provide a repo_url to connect one. Send preview_app to set the settings every preview app is created from (cluster, build, processes, TCP proxies, disks, hibernation, environment variables). If preview is al…",
       "params": [
         {
           "name": "id",
@@ -8153,7 +8682,7 @@
           },
           "auto_create_app": {
             "type": "boolean",
-            "description": "Automatically create a preview app when a pull request is opened. Must be false here, because the preview stage is created without preview app settings (cluster, processes, environment variables) and…",
+            "description": "Automatically create a preview app when a pull request is opened. Requires preview_app. Returns 400 when true without it.",
             "default": false
           },
           "delete_stale_apps": {
@@ -8167,6 +8696,411 @@
             "default": 5,
             "minimum": 1,
             "maximum": 365
+          },
+          "preview_app": {
+            "type": "object",
+            "description": "Configuration that every new preview app is created from. Sending it replaces the whole previous configuration, including anything set in the dashboard. Preview apps that already exist are not change…",
+            "properties": {
+              "cluster_id": {
+                "type": "string",
+                "description": "Identifier of the cluster (data center location) where preview apps are created.",
+                "format": "uuid"
+              },
+              "hibernation_enabled": {
+                "type": "boolean",
+                "description": "Whether preview apps hibernate (scale down to zero) after a period of inactivity. Defaults to true. Must be false when any process uses horizontal scaling."
+              },
+              "hibernate_after_seconds": {
+                "type": "integer",
+                "description": "Number of seconds of inactivity before a preview app is hibernated. Only applies when hibernation is enabled. Defaults to 300.",
+                "minimum": 1,
+                "maximum": 604800
+              },
+              "build_type": {
+                "type": "string",
+                "description": "Build strategy for preview apps. `nixpacks` - auto-detected build system. `railpack` - auto-detected build system, successor to Nixpacks. `dockerfile` - build using a Dockerfile. `pack` - build using…",
+                "enum": ["dockerfile", "pack", "nixpacks", "railpack"]
+              },
+              "build_path": {
+                "type": "string",
+                "description": "Relative path to the build directory within the repository. Defaults to the repository root."
+              },
+              "dockerfile_path": {
+                "type": "string",
+                "description": "Relative path to the Dockerfile within the repository. Only applies when build type is `dockerfile`."
+              },
+              "docker_context": {
+                "type": "string",
+                "description": "Docker build context path relative to the repository root. Only applies when build type is `dockerfile`."
+              },
+              "processes": {
+                "type": "array",
+                "description": "Processes every preview app starts with. At most one can be a `web` process.",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "display_name": {
+                      "type": "string",
+                      "description": "Human-readable name for the process shown in the dashboard. Cannot contain backticks, dollar signs, double quotes, backslashes or control characters.",
+                      "minLength": 1,
+                      "maxLength": 255
+                    },
+                    "type": {
+                      "type": "string",
+                      "description": "Process runtime type. `web` - HTTP server process that handles incoming web traffic. `worker` - background process that runs continuously. `cron` - scheduled process that runs at specified intervals.…",
+                      "enum": ["web", "worker", "cron", "job"]
+                    },
+                    "entrypoint": {
+                      "type": "string",
+                      "description": "Command used to start the process. If omitted, defaults to an empty string.",
+                      "maxLength": 1024
+                    },
+                    "port": {
+                      "type": "integer",
+                      "description": "Port number the process listens on for incoming connections",
+                      "minimum": 1,
+                      "maximum": 65535
+                    },
+                    "resource_type_id": {
+                      "type": "string",
+                      "description": "Identifier of the process resource type (machine size) to assign. Use the List Process Resource Types endpoint to retrieve available options."
+                    },
+                    "scaling_strategy": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "description": "Manual scaling type",
+                              "enum": ["manual"]
+                            },
+                            "config": {
+                              "type": "object",
+                              "description": "Manual scaling configuration"
+                            }
+                          },
+                          "required": ["type", "config"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "description": "Horizontal auto-scaling type",
+                              "enum": ["horizontal"]
+                            },
+                            "config": {
+                              "type": "object",
+                              "description": "Horizontal auto-scaling configuration"
+                            }
+                          },
+                          "required": ["type", "config"]
+                        }
+                      ],
+                      "description": "Scaling configuration for the process"
+                    },
+                    "schedule": {
+                      "type": "string",
+                      "description": "Cron expression defining the execution schedule. Required for cron processes.",
+                      "maxLength": 100
+                    },
+                    "job_start_policy": {
+                      "type": "string",
+                      "description": "When the job process should run relative to deployments. `beforeDeployment` - run after the build and before the new version of the other processes rolls out. If the job fails, the deployment fails a…",
+                      "enum": ["beforeDeployment", "afterSuccessDeployment", "afterFailedDeployment"]
+                    },
+                    "liveness_probe": {
+                      "type": "object",
+                      "description": "Kubernetes liveness probe configuration. Only applicable to web processes.",
+                      "properties": {
+                        "exec": {
+                          "type": "object",
+                          "description": "Exec-based probe - runs a command inside the container",
+                          "properties": {
+                            "command": {
+                              "type": "array",
+                              "description": "Command to execute inside the container"
+                            }
+                          },
+                          "required": ["command"],
+                          "nullable": true
+                        },
+                        "httpGet": {
+                          "type": "object",
+                          "description": "HTTP GET probe - performs an HTTP GET request",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "description": "Path to access on the HTTP server",
+                              "nullable": true
+                            },
+                            "port": {
+                              "type": "integer",
+                              "description": "Port number to access on the container",
+                              "minimum": 1,
+                              "maximum": 65535,
+                              "nullable": true
+                            },
+                            "host": {
+                              "type": "string",
+                              "description": "Host name to connect to",
+                              "nullable": true
+                            },
+                            "scheme": {
+                              "type": "string",
+                              "description": "Scheme to use for connecting to the host. `HTTP` or `HTTPS`",
+                              "enum": ["HTTP", "HTTPS"],
+                              "nullable": true
+                            },
+                            "httpHeaders": {
+                              "type": "array",
+                              "description": "Custom headers to set in the request",
+                              "nullable": true
+                            }
+                          },
+                          "nullable": true
+                        },
+                        "tcpSocket": {
+                          "type": "object",
+                          "description": "TCP socket probe - checks if a TCP port is open",
+                          "properties": {
+                            "host": {
+                              "type": "string",
+                              "description": "Host name to connect to",
+                              "nullable": true
+                            },
+                            "port": {
+                              "type": "integer",
+                              "description": "Port number to connect to",
+                              "minimum": 1,
+                              "maximum": 65535
+                            }
+                          },
+                          "required": ["port"],
+                          "nullable": true
+                        },
+                        "initialDelaySeconds": {
+                          "type": "integer",
+                          "description": "Seconds after the container starts before the probe is initiated",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "periodSeconds": {
+                          "type": "integer",
+                          "description": "How often in seconds to perform the probe",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "timeoutSeconds": {
+                          "type": "integer",
+                          "description": "Seconds after which the probe times out",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "successThreshold": {
+                          "type": "integer",
+                          "description": "Minimum consecutive successes for the probe to be considered successful",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "failureThreshold": {
+                          "type": "integer",
+                          "description": "Minimum consecutive failures for the probe to be considered failed",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "readiness_probe": {
+                      "type": "object",
+                      "description": "Kubernetes readiness probe configuration. Only applicable to web processes.",
+                      "properties": {
+                        "exec": {
+                          "type": "object",
+                          "description": "Exec-based probe - runs a command inside the container",
+                          "properties": {
+                            "command": {
+                              "type": "array",
+                              "description": "Command to execute inside the container"
+                            }
+                          },
+                          "required": ["command"],
+                          "nullable": true
+                        },
+                        "httpGet": {
+                          "type": "object",
+                          "description": "HTTP GET probe - performs an HTTP GET request",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "description": "Path to access on the HTTP server",
+                              "nullable": true
+                            },
+                            "port": {
+                              "type": "integer",
+                              "description": "Port number to access on the container",
+                              "minimum": 1,
+                              "maximum": 65535,
+                              "nullable": true
+                            },
+                            "host": {
+                              "type": "string",
+                              "description": "Host name to connect to",
+                              "nullable": true
+                            },
+                            "scheme": {
+                              "type": "string",
+                              "description": "Scheme to use for connecting to the host. `HTTP` or `HTTPS`",
+                              "enum": ["HTTP", "HTTPS"],
+                              "nullable": true
+                            },
+                            "httpHeaders": {
+                              "type": "array",
+                              "description": "Custom headers to set in the request",
+                              "nullable": true
+                            }
+                          },
+                          "nullable": true
+                        },
+                        "tcpSocket": {
+                          "type": "object",
+                          "description": "TCP socket probe - checks if a TCP port is open",
+                          "properties": {
+                            "host": {
+                              "type": "string",
+                              "description": "Host name to connect to",
+                              "nullable": true
+                            },
+                            "port": {
+                              "type": "integer",
+                              "description": "Port number to connect to",
+                              "minimum": 1,
+                              "maximum": 65535
+                            }
+                          },
+                          "required": ["port"],
+                          "nullable": true
+                        },
+                        "initialDelaySeconds": {
+                          "type": "integer",
+                          "description": "Seconds after the container starts before the probe is initiated",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "periodSeconds": {
+                          "type": "integer",
+                          "description": "How often in seconds to perform the probe",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "timeoutSeconds": {
+                          "type": "integer",
+                          "description": "Seconds after which the probe times out",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "successThreshold": {
+                          "type": "integer",
+                          "description": "Minimum consecutive successes for the probe to be considered successful",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        },
+                        "failureThreshold": {
+                          "type": "integer",
+                          "description": "Minimum consecutive failures for the probe to be considered failed",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "disk": {
+                      "type": "object",
+                      "description": "Persistent disk the process gets on every preview app. Only web and worker processes can have a disk, and they must use manual scaling with at most one instance.",
+                      "properties": {
+                        "resource_type_id": {
+                          "type": "string",
+                          "description": "Identifier of the disk resource type, which sets the disk size. Use the List Disk Resource Types endpoint to retrieve available options. A disk can grow but cannot shrink.",
+                          "minLength": 1
+                        },
+                        "mount_path": {
+                          "type": "string",
+                          "description": "Path inside the container where the disk is mounted. Only letters, numbers, `-`, `_`, `.` and `/` are allowed, and `/etc`, `/var`, `/lib`, `/usr/local`, `/mnt`, `/root`, `/app`, `/workspace` and `/la…"
+                        }
+                      },
+                      "required": ["resource_type_id", "mount_path"]
+                    },
+                    "tcp_proxies": {
+                      "type": "array",
+                      "description": "Ports of this process to expose on every preview app",
+                      "default": [],
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "port": {
+                            "type": "integer",
+                            "description": "Container port of this process to expose",
+                            "minimum": 1,
+                            "maximum": 65535
+                          },
+                          "is_public": {
+                            "type": "boolean",
+                            "description": "Where the port is reachable. `true` - from the internet through a TCP proxy with its own public hostname and port. `false` - only from inside the cluster, as a private port. Defaults to false.",
+                            "default": false
+                          }
+                        },
+                        "required": ["port"]
+                      }
+                    }
+                  },
+                  "required": ["display_name", "type", "resource_type_id", "scaling_strategy"]
+                }
+              },
+              "environment_variables": {
+                "type": "array",
+                "description": "Environment variables every preview app starts with. Each key can be used only once.",
+                "default": [],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "description": "Name of the environment variable. May contain only letters, digits, \"-\", \"_\", \".\" or \":\".",
+                      "minLength": 1,
+                      "maxLength": 255
+                    },
+                    "value": {
+                      "type": "string",
+                      "description": "Value of the environment variable. Stored encrypted at rest.",
+                      "maxLength": 32768
+                    },
+                    "is_runtime": {
+                      "type": "boolean",
+                      "description": "Whether this variable is available at runtime. Defaults to true.",
+                      "default": true
+                    },
+                    "is_buildtime": {
+                      "type": "boolean",
+                      "description": "Whether this variable is available during the build step. Defaults to true.",
+                      "default": true
+                    }
+                  },
+                  "required": ["key", "value"]
+                }
+              }
+            },
+            "required": ["cluster_id", "processes"]
           }
         }
       },
@@ -8677,6 +9611,17 @@
           }
         }
       ],
+      "body": null,
+      "bodyRequired": false
+    },
+    {
+      "id": "listDiskResourceTypesV3",
+      "method": "GET",
+      "path": "/resources/disk-resource-types",
+      "tag": "Resources",
+      "summary": "List disk resource types",
+      "description": "Retrieve all available disk resource types (disk sizes) that can be attached to web and worker processes, smallest first. This is reference data and does not require specific resource permissions.",
+      "params": [],
       "body": null,
       "bodyRequired": false
     },
