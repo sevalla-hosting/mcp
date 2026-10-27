@@ -133,6 +133,8 @@ const ENV_VAR_VALUE_FIELDS: Record<string, string[]> = {
   updateStaticSiteEnvVarV3: ['value'],
   createGlobalEnvVarV3: ['value'],
   updateGlobalEnvVarV3: ['value'],
+  enablePipelinePreviewV3: ['value'],
+  updatePipelinePreviewSettingsV3: ['value'],
 }
 
 export const classify = (method: HttpMethod, id: string): OperationClass => {

@@ -167,6 +167,7 @@ describe('availability', () => {
   it('redacts environment variable values only', () => {
     ok(secretFieldsFor(op('listEnvironmentVariablesV3')).has('value'))
     ok(secretFieldsFor(op('updateGlobalEnvVarV3')).has('value'))
+    ok(secretFieldsFor(op('updatePipelinePreviewSettingsV3')).has('value'))
     strictEqual(secretFieldsFor(op('listWebhooksV3')).size, 0)
     strictEqual(secretFieldsFor(op('createApiKeyV3')).size, 0)
   })
