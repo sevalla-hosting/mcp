@@ -63,6 +63,7 @@ export const ADDITIVE_OPERATIONS = new Set([
   'createGlobalEnvVarV3',
   'createLoadBalancerV3',
   'createObjectStorageV3',
+  'createPipelinePreviewAppV3',
   'createPipelineStageV3',
   'createPipelineV3',
   'createProcessV3',
