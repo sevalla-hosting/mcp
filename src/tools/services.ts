@@ -288,6 +288,7 @@ export const getDatabase = readTool({
         memory_mb: db.memory_limit,
         storage_mb: db.storage_size,
         db_name: db.db_name,
+        db_user: db.db_user,
         internal_endpoint: endpoint(db.internal_hostname, db.internal_port),
         external_endpoint: endpoint(db.external_hostname, db.external_port) ?? 'disabled',
         cluster: db.cluster_display_name ?? db.cluster_id,

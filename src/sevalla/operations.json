@@ -915,7 +915,7 @@
       "path": "/applications/{id}/clone",
       "tag": "Applications",
       "summary": "Clone application",
-      "description": "Create an identical copy of an existing application including its processes, environment variables, build settings, and configuration. The cloned application is created in a new namespace and an initial deployment is triggered automatically.",
+      "description": "Create an identical copy of an existing application including its processes, environment variables, build settings, and configuration. The cloned application is created in a new namespace. No deployment is started - start one with the Trigger Deployment endpoint. The clone copies `auto_deploy` from the source, so if it is on, the next push to the default branch deploys the clone with the same env…",
       "params": [
         {
           "name": "id",
@@ -1389,7 +1389,7 @@
       "path": "/applications/{id}/domains",
       "tag": "Applications",
       "summary": "Add application domain",
-      "description": "Add a custom domain to an application. After adding, configure your DNS records as indicated in the response to complete domain verification. The domain status will transition from `verification` to `pointing` to `active` as DNS propagates.",
+      "description": "Add a custom domain to an application. After adding, configure your DNS records as indicated in the response to complete domain verification. The domain status will transition from `verification` to `pointing` to `active` as DNS propagates. Custom domains cannot be added while the web process uses a hobby instance size (400). A domain that already exists on Sevalla returns a 409.",
       "params": [
         {
           "name": "id",
@@ -1585,7 +1585,7 @@
       "path": "/applications/{id}/domains/{domain_id}/set-primary",
       "tag": "Applications",
       "summary": "Set primary application domain",
-      "description": "Set a domain as the primary domain for the application. The primary domain is used for canonical URLs and redirects. Only one domain can be primary at a time - the previously primary domain is automatically demoted.",
+      "description": "Set a domain as the primary domain for the application. The primary domain is the address shown for the application, for example in the dashboard and in pipelines. It does not redirect traffic from other domains. Only one domain can be primary at a time - the previously primary domain is automatically demoted.",
       "params": [
         {
           "name": "id",
@@ -3040,23 +3040,8 @@
           },
           "liveness_probe": {
             "type": "object",
-            "description": "Kubernetes liveness probe configuration. Only applicable to web processes.",
+            "description": "Kubernetes liveness probe configuration. Only HTTP GET probes (`httpGet`) are supported, and a probe without `httpGet.path` is not saved. Only applicable to web processes.",
             "properties": {
-              "exec": {
-                "type": "object",
-                "description": "Exec-based probe - runs a command inside the container",
-                "properties": {
-                  "command": {
-                    "type": "array",
-                    "description": "Command to execute inside the container",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "required": ["command"],
-                "nullable": true
-              },
               "httpGet": {
                 "type": "object",
                 "description": "HTTP GET probe - performs an HTTP GET request",
@@ -3106,25 +3091,6 @@
                 },
                 "nullable": true
               },
-              "tcpSocket": {
-                "type": "object",
-                "description": "TCP socket probe - checks if a TCP port is open",
-                "properties": {
-                  "host": {
-                    "type": "string",
-                    "description": "Host name to connect to",
-                    "nullable": true
-                  },
-                  "port": {
-                    "type": "integer",
-                    "description": "Port number to connect to",
-                    "minimum": 1,
-                    "maximum": 65535
-                  }
-                },
-                "required": ["port"],
-                "nullable": true
-              },
               "initialDelaySeconds": {
                 "type": "integer",
                 "description": "Seconds after the container starts before the probe is initiated",
@@ -3141,7 +3107,7 @@
               },
               "timeoutSeconds": {
                 "type": "integer",
-                "description": "Seconds after which the probe times out",
+                "description": "Seconds after which the probe times out. Defaults to 120 when omitted.",
                 "minimum": 1,
                 "maximum": 9007199254740991,
                 "nullable": true
@@ -3164,23 +3130,8 @@
           },
           "readiness_probe": {
             "type": "object",
-            "description": "Kubernetes readiness probe configuration. Only applicable to web processes.",
+            "description": "Kubernetes readiness probe configuration. Only HTTP GET probes (`httpGet`) are supported, and a probe without `httpGet.path` is not saved. Only applicable to web processes.",
             "properties": {
-              "exec": {
-                "type": "object",
-                "description": "Exec-based probe - runs a command inside the container",
-                "properties": {
-                  "command": {
-                    "type": "array",
-                    "description": "Command to execute inside the container",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "required": ["command"],
-                "nullable": true
-              },
               "httpGet": {
                 "type": "object",
                 "description": "HTTP GET probe - performs an HTTP GET request",
@@ -3230,25 +3181,6 @@
                 },
                 "nullable": true
               },
-              "tcpSocket": {
-                "type": "object",
-                "description": "TCP socket probe - checks if a TCP port is open",
-                "properties": {
-                  "host": {
-                    "type": "string",
-                    "description": "Host name to connect to",
-                    "nullable": true
-                  },
-                  "port": {
-                    "type": "integer",
-                    "description": "Port number to connect to",
-                    "minimum": 1,
-                    "maximum": 65535
-                  }
-                },
-                "required": ["port"],
-                "nullable": true
-              },
               "initialDelaySeconds": {
                 "type": "integer",
                 "description": "Seconds after the container starts before the probe is initiated",
@@ -3265,7 +3197,7 @@
               },
               "timeoutSeconds": {
                 "type": "integer",
-                "description": "Seconds after which the probe times out",
+                "description": "Seconds after which the probe times out. Defaults to 120 when omitted.",
                 "minimum": 1,
                 "maximum": 9007199254740991,
                 "nullable": true
@@ -3520,23 +3452,8 @@
           },
           "liveness_probe": {
             "type": "object",
-            "description": "Kubernetes liveness probe configuration. Only applicable to web processes.",
+            "description": "Kubernetes liveness probe configuration. Only HTTP GET probes (`httpGet`) are supported, and a probe without `httpGet.path` is not saved. Only applicable to web processes.",
             "properties": {
-              "exec": {
-                "type": "object",
-                "description": "Exec-based probe - runs a command inside the container",
-                "properties": {
-                  "command": {
-                    "type": "array",
-                    "description": "Command to execute inside the container",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "required": ["command"],
-                "nullable": true
-              },
               "httpGet": {
                 "type": "object",
                 "description": "HTTP GET probe - performs an HTTP GET request",
@@ -3586,25 +3503,6 @@
                 },
                 "nullable": true
               },
-              "tcpSocket": {
-                "type": "object",
-                "description": "TCP socket probe - checks if a TCP port is open",
-                "properties": {
-                  "host": {
-                    "type": "string",
-                    "description": "Host name to connect to",
-                    "nullable": true
-                  },
-                  "port": {
-                    "type": "integer",
-                    "description": "Port number to connect to",
-                    "minimum": 1,
-                    "maximum": 65535
-                  }
-                },
-                "required": ["port"],
-                "nullable": true
-              },
               "initialDelaySeconds": {
                 "type": "integer",
                 "description": "Seconds after the container starts before the probe is initiated",
@@ -3621,7 +3519,7 @@
               },
               "timeoutSeconds": {
                 "type": "integer",
-                "description": "Seconds after which the probe times out",
+                "description": "Seconds after which the probe times out. Defaults to 120 when omitted.",
                 "minimum": 1,
                 "maximum": 9007199254740991,
                 "nullable": true
@@ -3644,23 +3542,8 @@
           },
           "readiness_probe": {
             "type": "object",
-            "description": "Kubernetes readiness probe configuration. Only applicable to web processes.",
+            "description": "Kubernetes readiness probe configuration. Only HTTP GET probes (`httpGet`) are supported, and a probe without `httpGet.path` is not saved. Only applicable to web processes.",
             "properties": {
-              "exec": {
-                "type": "object",
-                "description": "Exec-based probe - runs a command inside the container",
-                "properties": {
-                  "command": {
-                    "type": "array",
-                    "description": "Command to execute inside the container",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "required": ["command"],
-                "nullable": true
-              },
               "httpGet": {
                 "type": "object",
                 "description": "HTTP GET probe - performs an HTTP GET request",
@@ -3710,25 +3593,6 @@
                 },
                 "nullable": true
               },
-              "tcpSocket": {
-                "type": "object",
-                "description": "TCP socket probe - checks if a TCP port is open",
-                "properties": {
-                  "host": {
-                    "type": "string",
-                    "description": "Host name to connect to",
-                    "nullable": true
-                  },
-                  "port": {
-                    "type": "integer",
-                    "description": "Port number to connect to",
-                    "minimum": 1,
-                    "maximum": 65535
-                  }
-                },
-                "required": ["port"],
-                "nullable": true
-              },
               "initialDelaySeconds": {
                 "type": "integer",
                 "description": "Seconds after the container starts before the probe is initiated",
@@ -3745,7 +3609,7 @@
               },
               "timeoutSeconds": {
                 "type": "integer",
-                "description": "Seconds after which the probe times out",
+                "description": "Seconds after which the probe times out. Defaults to 120 when omitted.",
                 "minimum": 1,
                 "maximum": 9007199254740991,
                 "nullable": true
@@ -3812,7 +3676,7 @@
       "path": "/applications/{id}/processes/{process_id}/disk",
       "tag": "Applications",
       "summary": "Attach or update process disk",
-      "description": "Attach a persistent disk to a web or worker process, or change the size or mount path of its disk. A disk can grow but cannot shrink. A disk can only be mounted by one instance, so if the process uses more than one instance or horizontal scaling, it is switched to manual scaling with one instance. The change takes effect on the next deployment, and the disk is billed while it exists.",
+      "description": "Attach a persistent disk to a web or worker process, or change the size or mount path of its disk. A disk can grow but cannot shrink. A disk can only be mounted by one instance, so if the process uses more than one instance or horizontal scaling, it is switched to manual scaling with one instance. The change takes effect on the next deployment. The disk is billed only for the time the process is …",
       "params": [
         {
           "name": "id",
@@ -5521,7 +5385,7 @@
       "path": "/databases/{id}/backups",
       "tag": "Databases",
       "summary": "Create database backup",
-      "description": "Create a manual backup of a database. The backup is created asynchronously and will appear in the backup list once completed. Manual backups have a 14-day retention period. Databases created on OCI clusters use external backups instead, and this endpoint returns a 400 for them.",
+      "description": "Create a manual backup of a database. The backup is created asynchronously and will appear in the backup list once completed. Manual backups have a 14-day retention period. A database keeps at most 5 manual backups. The request fails with a 400 when the database is not ready, another backup is in progress, or the limit is reached, so a 202 means the backup was queued. Databases created on OCI clu…",
       "params": [
         {
           "name": "id",
@@ -5541,7 +5405,8 @@
           "display_name": {
             "type": "string",
             "description": "Human-readable name for the manual backup",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 200
           }
         },
         "required": ["display_name"]
@@ -7039,7 +6904,7 @@
       "path": "/load-balancers/{id}/domains",
       "tag": "Load balancers",
       "summary": "Add load balancer domain",
-      "description": "Add a custom domain to a load balancer. After adding, configure your DNS records as indicated in the response to complete domain verification. The domain status will transition from `verification` to `pointing` to `active` as DNS propagates.",
+      "description": "Add a custom domain to a load balancer. After adding, configure your DNS records as indicated in the response to complete domain verification. The domain status will transition from `verification` to `pointing` to `active` as DNS propagates. A domain that already exists on Sevalla returns a 409.",
       "params": [
         {
           "name": "id",
@@ -8378,7 +8243,7 @@
                         },
                         "timeoutSeconds": {
                           "type": "integer",
-                          "description": "Seconds after which the probe times out",
+                          "description": "Seconds after which the probe times out. Defaults to 120 when omitted.",
                           "minimum": 1,
                           "maximum": 9007199254740991,
                           "nullable": true
@@ -8485,7 +8350,7 @@
                         },
                         "timeoutSeconds": {
                           "type": "integer",
-                          "description": "Seconds after which the probe times out",
+                          "description": "Seconds after which the probe times out. Defaults to 120 when omitted.",
                           "minimum": 1,
                           "maximum": 9007199254740991,
                           "nullable": true
@@ -8897,7 +8762,7 @@
                         },
                         "timeoutSeconds": {
                           "type": "integer",
-                          "description": "Seconds after which the probe times out",
+                          "description": "Seconds after which the probe times out. Defaults to 120 when omitted.",
                           "minimum": 1,
                           "maximum": 9007199254740991,
                           "nullable": true
@@ -9004,7 +8869,7 @@
                         },
                         "timeoutSeconds": {
                           "type": "integer",
-                          "description": "Seconds after which the probe times out",
+                          "description": "Seconds after which the probe times out. Defaults to 120 when omitted.",
                           "minimum": 1,
                           "maximum": 9007199254740991,
                           "nullable": true
@@ -9701,7 +9566,7 @@
       "path": "/static-sites",
       "tag": "Static sites",
       "summary": "Create static site",
-      "description": "Create a new static site from a Git repository. An initial deployment is triggered automatically after creation. If Sevalla cannot access the Git repository, the request fails with a 400 error that explains why and links to the page where access can be granted (for example the repository access settings of the GitHub App used by Sevalla).",
+      "description": "Create a new static site from a Git repository. No deployment is started - trigger the first one with the Deploy Static Site endpoint. If Sevalla cannot access the Git repository, the request fails with a 400 error that explains why and links to the page where access can be granted (for example the repository access settings of the GitHub App used by Sevalla).",
       "params": [],
       "body": {
         "type": "object",
@@ -9764,8 +9629,8 @@
           },
           "node_version": {
             "type": "string",
-            "description": "Node.js version used to build the static site",
-            "maxLength": 20
+            "description": "Node.js version used to build the static site. Required when `build_command` or `install_command` is set. `16`, `18`, `20` and `22` - that major version. `lts` - the current long-term support release…",
+            "enum": ["16", "18", "20", "22", "lts", "latest"]
           },
           "index_file": {
             "type": "string",
@@ -9871,7 +9736,8 @@
           },
           "node_version": {
             "type": "string",
-            "description": "Node.js version used to build the static site",
+            "description": "Node.js version used to build the static site. Required when `build_command` or `install_command` is set. `16`, `18`, `20` and `22` - that major version. `lts` - the current long-term support release…",
+            "enum": ["16", "18", "20", "22", "lts", "latest"],
             "nullable": true
           },
           "published_directory": {
@@ -10360,7 +10226,7 @@
       "path": "/static-sites/{id}/domains",
       "tag": "Static sites",
       "summary": "Add static site domain",
-      "description": "Add a custom domain to a static site. After adding, configure your DNS records as indicated in the response to complete domain verification. The domain status will transition from `verification` to `pointing` to `active` as DNS propagates.",
+      "description": "Add a custom domain to a static site. After adding, configure your DNS records as indicated in the response to complete domain verification. The domain status will transition from `verification` to `pointing` to `active` as DNS propagates. A domain that already exists on Sevalla returns a 409.",
       "params": [
         {
           "name": "id",

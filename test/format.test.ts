@@ -68,6 +68,11 @@ describe('formatApiError', () => {
     ok(serverError.includes('later attempt'))
     ok(!serverError.includes('err-9'))
     ok(formatApiError(new ApiError(422, 'Invalid', undefined, 'name is too short')).includes('name is too short'))
+    strictEqual(
+      formatApiError(new ApiError(400, 'Invalid request body.')),
+      'The Sevalla API rejected the request: Invalid request body.',
+    )
+    ok(formatApiError(new ApiError(404, 'App not found.')).startsWith('Not found: App not found. The ID'))
   })
 })
 

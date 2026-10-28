@@ -55,6 +55,8 @@ export const firstLine = (text: unknown, max = 160): string | undefined => {
 export const shortSha = (sha: unknown): string | undefined =>
   typeof sha === 'string' && sha.length > 0 ? sha.slice(0, 7) : undefined
 
+const sentence = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`)
+
 export const formatApiError = (err: ApiError): string => {
   if (err.code === RESPONSE_TOO_LARGE) {
     return 'The Sevalla API response was larger than this connector reads (5 MB). A narrower request fits: a shorter time window, a smaller limit or more filters.'
@@ -63,21 +65,21 @@ export const formatApiError = (err: ApiError): string => {
   switch (err.status) {
     case 400:
     case 422:
-      return `The Sevalla API rejected the request: ${err.message}.${detail}`
+      return `The Sevalla API rejected the request: ${sentence(err.message)}${detail}`
     case 401:
       return 'The Sevalla API key for this connection is invalid, expired or revoked. Reconnecting the Sevalla connector issues a new one.'
     case 403:
-      return `The Sevalla API refused the request: ${/[.!?]$/.test(err.message) ? err.message : `${err.message}.`}`
+      return `The Sevalla API refused the request: ${sentence(err.message)}`
     case 404:
-      return `Not found: ${err.message}. The ID may be wrong or belong to another company; list_services returns the IDs this connection can access.`
+      return `Not found: ${sentence(err.message)} The ID may be wrong or belong to another company; list_services returns the IDs this connection can access.`
     case 409:
-      return `The request conflicts with the current state of the resource: ${err.message}.${detail}`
+      return `The request conflicts with the current state of the resource: ${sentence(err.message)}${detail}`
     case 429:
       return `The Sevalla API rate limit was reached${err.retryAfter ? `; it accepts requests again after ${err.retryAfter} seconds` : ''}.`
     default:
       return err.status >= 500
-        ? `The Sevalla API failed with status ${err.status}: ${err.message}. The request may succeed on a later attempt.`
-        : `The Sevalla API returned status ${err.status}: ${err.message}.${detail}`
+        ? `The Sevalla API failed with status ${err.status}: ${sentence(err.message)} The request may succeed on a later attempt.`
+        : `The Sevalla API returned status ${err.status}: ${sentence(err.message)}${detail}`
   }
 }
 
