@@ -159,6 +159,7 @@ describe('e2e: get_application / get_static_site / get_database / get_platform_o
 
   it('summarizes a database without secrets', async () => {
     const res = await mcp.call('get_database', { database_id: IDS.db })
+    strictEqual(res.json.db_user, 'app_user')
     strictEqual(res.json.internal_endpoint, 'main-db.internal:5432')
     strictEqual(res.json.external_endpoint, 'disabled')
     strictEqual(res.json.internal_connections[0].service_name, 'API')

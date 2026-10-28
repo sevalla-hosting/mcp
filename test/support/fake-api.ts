@@ -699,6 +699,7 @@ export const startFakeApi = async (): Promise<FakeApi> => {
         memory_limit: 1024,
         storage_size: 10240,
         db_name: 'app',
+        db_user: 'app_user',
         internal_hostname: 'main-db.internal',
         internal_port: '5432',
         external_hostname: null,
