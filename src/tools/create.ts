@@ -13,8 +13,6 @@ const clusterId = uuid('Region ID (get_platform_options).')
 
 const projectId = uuid('Project to add the service to.').optional()
 
-const deploy = z.boolean().default(true).describe('Start the first deployment.')
-
 const startFirstDeployment = async (api: SevallaClient, path: string) => {
   try {
     const deployment = summarizeDeployment(await api.post<ApiRecord>(path, {}))
@@ -50,7 +48,7 @@ export const createApplication = writeTool('create', {
       docker_image: z.string().min(1).max(512).optional().describe('Image, e.g. nginx:1.27, for source dockerImage.'),
       docker_registry_credential_id: uuid('Registry credential for private images.').optional(),
       project_id: projectId,
-      deploy,
+      deploy: z.boolean().default(true).describe('Start the first deployment.'),
     })
     .strict(),
   run: async (args, { api }) => {
@@ -99,7 +97,7 @@ const deployPaths = z.array(z.string().min(1).max(255)).min(1).max(50).optional(
 export const createStaticSite = writeTool('create', {
   name: 'create_static_site',
   title: 'Create Sevalla static site',
-  description: 'Creates a Sevalla static site from a Git repository and starts its first deployment.',
+  description: 'Creates a Sevalla static site from a Git repository and optionally deploys it.',
   input: z
     .object({
       display_name: displayName('static site'),
@@ -125,7 +123,7 @@ export const createStaticSite = writeTool('create', {
       index_file: z.string().min(1).max(255).optional().describe('e.g. index.html'),
       error_file: z.string().min(1).max(255).optional().describe('Not-found page, e.g. 404.html'),
       project_id: projectId,
-      deploy,
+      deploy: z.boolean().default(false).describe('Start the first deployment.'),
     })
     .strict(),
   run: async ({ deploy, ...args }, { api }) => {
@@ -133,7 +131,9 @@ export const createStaticSite = writeTool('create', {
       throw new ToolInputError('allow_deploy_paths and ignore_deploy_paths are mutually exclusive.')
     }
     const site = await api.post<ApiRecord>('/static-sites', omitEmpty({ ...args }))
-    const started = deploy ? await startFirstDeployment(api, encodePath`/static-sites/${site.id}/deployments`) : {}
+    const started = deploy
+      ? await startFirstDeployment(api, encodePath`/static-sites/${site.id}/deployments`)
+      : { note: 'No deployment was started; trigger_deployment deploys the site.' }
     return toolResult(
       omitEmpty({
         static_site: omitEmpty({
