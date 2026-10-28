@@ -72,7 +72,7 @@ const deployment = (id: string, status: string, offsetMs: number, extra: Record<
   status,
   type: 'manual',
   trigger: 'MANUAL_DEPLOY',
-  steps: ['checkout', 'build', 'deploy'],
+  steps: ['checkout', 'build', 'rollout'],
   docker_image_url: null,
   git_type: 'github',
   repo_url: 'https://github.com/acme/api',
@@ -498,6 +498,9 @@ export const startFakeApi = async (): Promise<FakeApi> => {
     getApplicationDeploymentLogsV3: ({ query }) => ({
       body: [
         logEntry(-599_000, 'INFO', 'Cloning repository'),
+        logEntry(-595_000, 'ERROR', '#5 [build 2/4] RUN npm ci'),
+        logEntry(-594_000, 'ERROR', "ModuleNotFoundError: No module named 'flask'"),
+        logEntry(-593_000, 'ERROR', 'sh: 1: vite: not found'),
         logEntry(-598_000, 'INFO', 'npm ci'),
         logEntry(-590_000, 'INFO', 'npm ERR! Missing script: "build"'),
         logEntry(-589_000, 'ERROR', 'Build failed with exit code 1'),

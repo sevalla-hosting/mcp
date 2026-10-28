@@ -106,6 +106,29 @@ describe('e2e: get_application / get_static_site / get_database / get_platform_o
     strictEqual(res.json.more, undefined)
   })
 
+  it('shows the health checks, disk and deployment timing of processes', async () => {
+    const probe = { httpGet: { path: '/health', port: 8080 }, exec: null, periodSeconds: 10 }
+    const disk = { resource_type_id: IDS.processSize, resource_type_name: 'ps1', size_gib: 10, mount_path: '/data' }
+    h.api.override('listProcessesV3', () => ({
+      body: {
+        data: [
+          { id: IDS.process, type: 'web', readiness_probe: probe, liveness_probe: {}, disk },
+          { id: IDS.newResource, type: 'job', job_start_policy: 'beforeDeployment', disk: null },
+        ],
+        total: 2,
+        offset: 0,
+        limit: 100,
+      },
+    }))
+    const res = await mcp.call('get_application', { application_id: IDS.app })
+    const [web, job] = res.json.processes
+    deepStrictEqual(web.readiness_probe, { httpGet: { path: '/health', port: 8080 }, periodSeconds: 10 })
+    strictEqual(web.liveness_probe, undefined)
+    deepStrictEqual(web.disk, disk)
+    strictEqual(job.job_start_policy, 'beforeDeployment')
+    strictEqual(job.disk, undefined)
+  })
+
   it('names the operation that pages domains beyond the first 100', async () => {
     h.api.override('listApplicationDomainsV3', () => ({
       body: { data: [{ id: IDS.domain, name: 'a.example.com' }], total: 340, offset: 0, limit: 100 },
@@ -166,7 +189,7 @@ describe('e2e: deployments', () => {
       service_id: IDS.app,
       deployment_id: IDS.deployment,
     })
-    deepStrictEqual(res.json.steps, ['checkout', 'build', 'deploy'])
+    deepStrictEqual(res.json.steps, ['checkout', 'build', 'rollout'])
   })
 
   it('returns the tail of the build log for the deployment window', async () => {
@@ -192,8 +215,10 @@ describe('e2e: deployments', () => {
       errors_only: true,
     })
     const lines = res.text.split('\n').slice(1)
-    strictEqual(lines.length, 2)
-    ok(lines[0]?.includes('npm ERR!'))
+    strictEqual(lines.length, 4)
+    ok(lines[0]?.includes('ModuleNotFoundError'))
+    ok(lines[1]?.includes('vite: not found'))
+    ok(lines[2]?.includes('npm ERR!'))
     strictEqual(last('getApplicationDeploymentLogsV3').query.limit, '2000')
   })
 
@@ -237,9 +262,34 @@ describe('e2e: deployments', () => {
       deployment_id: IDS.deployment,
     })
     strictEqual(misuse.isError, true)
-    const site = await mcp.call('rollback_deployment', { service_type: 'static_site', service_id: IDS.site })
+    const site = await mcp.call('rollback_deployment', {
+      service_type: 'static_site',
+      service_id: IDS.site,
+      deployment_id: IDS.sitePreviousDeployment,
+    })
     strictEqual(site.json.redeployed_from, IDS.sitePreviousDeployment)
     deepStrictEqual(last('deployStaticSiteV3').body, { deployment_id: IDS.sitePreviousDeployment })
+  })
+
+  it('rolls a static site back past a failed newest deployment to the one before the live one', async () => {
+    const nothingOlder = await mcp.call('rollback_deployment', { service_type: 'static_site', service_id: IDS.site })
+    strictEqual(nothingOlder.isError, true)
+    ok(nothingOlder.text.includes('No earlier successful deployment'))
+    h.api.override('listStaticSiteDeploymentsV3', () => ({
+      body: {
+        data: [
+          { id: IDS.siteDeployment, status: 'failed' },
+          { id: IDS.sitePreviousDeployment, status: 'success' },
+          { id: IDS.newResource, status: 'success' },
+        ],
+        total: 3,
+        offset: 0,
+        limit: 25,
+      },
+    }))
+    const site = await mcp.call('rollback_deployment', { service_type: 'static_site', service_id: IDS.site })
+    strictEqual(site.json.redeployed_from, IDS.newResource)
+    deepStrictEqual(last('deployStaticSiteV3').body, { deployment_id: IDS.newResource })
   })
 })
 

@@ -112,7 +112,6 @@ export const DEDICATED_TOOLS: Record<string, string> = {
   createApplicationV3: 'create_application',
   createStaticSiteV3: 'create_static_site',
   createDatabaseV3: 'create_database',
-  createDatabaseInternalConnectionV3: 'create_database',
 }
 
 const METRIC_PATH = /\/metrics\//

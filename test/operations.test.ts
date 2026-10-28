@@ -137,8 +137,13 @@ describe('classification', () => {
     for (const o of OPERATIONS.filter((x) => isExecutable(x))) {
       counts[o.class] = (counts[o.class] ?? 0) + 1
     }
-    deepStrictEqual(counts, { read: 60, create: 12, update: 76, delete: 31 })
-    strictEqual(OPERATIONS.filter((o) => o.dedicatedTool).length, 70)
+    deepStrictEqual(counts, { read: 60, create: 13, update: 76, delete: 31 })
+    strictEqual(OPERATIONS.filter((o) => o.dedicatedTool).length, 69)
+  })
+
+  it('connects an existing database through sevalla_api_create, not create_database', () => {
+    ok(isExecutable(op('createDatabaseInternalConnectionV3')))
+    strictEqual(op('createDatabaseInternalConnectionV3').class, 'create')
   })
 })
 
