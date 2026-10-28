@@ -4,7 +4,7 @@
   "title": "Sevalla",
   "description": "Official Sevalla MCP: deploy, debug and manage apps, static sites and databases.",
   "repository": {
-    "url": "https://github.com/sevalla-hosting/mcp",
+    "url": "https://github.com/sevalla/mcp",
     "source": "github"
   },
   "websiteUrl": "https://sevalla.com",
