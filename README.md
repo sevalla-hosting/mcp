@@ -4,7 +4,7 @@
 
 **Deploy, debug and manage Sevalla applications, static sites and databases from any AI agent.**
 
-[![CI](https://github.com/sevalla-hosting/mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/sevalla-hosting/mcp/actions/workflows/ci.yml)
+[![CI](https://github.com/sevalla/mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/sevalla/mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-26-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![MCP](https://img.shields.io/badge/MCP-2026--07--28-8B5CF6)](https://modelcontextprotocol.io/specification/2026-07-28)
@@ -16,7 +16,7 @@
 
 A remote [Model Context Protocol](https://modelcontextprotocol.io/) server for the [Sevalla](https://sevalla.com) PaaS API. It gives AI agents 27 tools: 22 purpose-built tools for the everyday workflows (deploying, reading logs and metrics, environment variables, scaling, domains, creating services) and 5 generic tools that reach the rest of the Sevalla API by operation ID, split into read, create, update and delete.
 
-[![Sevalla server MCP server](https://glama.ai/mcp/servers/sevalla-hosting/mcp/badges/card.svg?v=2)](https://glama.ai/mcp/servers/sevalla-hosting/mcp)
+[![Sevalla server MCP server](https://glama.ai/mcp/servers/sevalla/mcp/badges/card.svg?v=2)](https://glama.ai/mcp/servers/sevalla/mcp)
 
 ## Tools
 
@@ -206,7 +206,7 @@ Sign-in is OAuth 2.1 with PKCE. Clients identify themselves with an [OAuth Clien
 **Requirements:** Node.js 26 (24 also works) and pnpm 12. TypeScript runs natively, no build step.
 
 ```bash
-git clone https://github.com/sevalla-hosting/mcp.git
+git clone https://github.com/sevalla/mcp.git
 cd mcp
 pnpm install
 pnpm start
