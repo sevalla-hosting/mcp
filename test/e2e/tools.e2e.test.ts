@@ -106,6 +106,29 @@ describe('e2e: get_application / get_static_site / get_database / get_platform_o
     strictEqual(res.json.more, undefined)
   })
 
+  it('shows the health checks, disk and deployment timing of processes', async () => {
+    const probe = { httpGet: { path: '/health', port: 8080 }, exec: null, periodSeconds: 10 }
+    const disk = { resource_type_id: IDS.processSize, resource_type_name: 'ps1', size_gib: 10, mount_path: '/data' }
+    h.api.override('listProcessesV3', () => ({
+      body: {
+        data: [
+          { id: IDS.process, type: 'web', readiness_probe: probe, liveness_probe: {}, disk },
+          { id: IDS.newResource, type: 'job', job_start_policy: 'beforeDeployment', disk: null },
+        ],
+        total: 2,
+        offset: 0,
+        limit: 100,
+      },
+    }))
+    const res = await mcp.call('get_application', { application_id: IDS.app })
+    const [web, job] = res.json.processes
+    deepStrictEqual(web.readiness_probe, { httpGet: { path: '/health', port: 8080 }, periodSeconds: 10 })
+    strictEqual(web.liveness_probe, undefined)
+    deepStrictEqual(web.disk, disk)
+    strictEqual(job.job_start_policy, 'beforeDeployment')
+    strictEqual(job.disk, undefined)
+  })
+
   it('names the operation that pages domains beyond the first 100', async () => {
     h.api.override('listApplicationDomainsV3', () => ({
       body: { data: [{ id: IDS.domain, name: 'a.example.com' }], total: 340, offset: 0, limit: 100 },
@@ -166,7 +189,7 @@ describe('e2e: deployments', () => {
       service_id: IDS.app,
       deployment_id: IDS.deployment,
     })
-    deepStrictEqual(res.json.steps, ['checkout', 'build', 'deploy'])
+    deepStrictEqual(res.json.steps, ['checkout', 'build', 'rollout'])
   })
 
   it('returns the tail of the build log for the deployment window', async () => {

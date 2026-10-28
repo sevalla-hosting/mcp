@@ -40,7 +40,7 @@ export const getDeployment = readTool({
   name: 'get_deployment',
   title: 'Get Sevalla deployment',
   description:
-    'Returns a deployment of a Sevalla application or static site: status, steps, branch, commit, image, build error and timing. It reports the progress of deployments started by trigger_deployment or rollback_deployment. Output: get_deployment_logs.',
+    'Returns a deployment of a Sevalla application or static site: status, steps, branch, commit, image and timing. It reports the progress of deployments started by trigger_deployment or rollback_deployment. Output and failure causes: get_deployment_logs.',
   input: z.object({ service_type: serviceType, service_id: serviceId, deployment_id: deploymentId, detail }).strict(),
   run: async ({ service_type, service_id, deployment_id, detail }, { api }) => {
     const deployment = await api.get<ApiRecord>(
@@ -56,16 +56,13 @@ export const getDeployment = readTool({
 const ERROR_PATTERN = /\b(error|errors|failed|failure|exception|fatal|panic|cannot|denied)\b|\berr!/i
 const MAX_SCAN = 2000
 
-const ERROR_SEVERITIES = new Set(['ERROR', 'FATAL', 'CRITICAL', 'EMERGENCY', 'ALERT'])
-
-const isErrorLine = (entry: LogEntry) =>
-  ERROR_SEVERITIES.has((entry.severity ?? '').toUpperCase()) || ERROR_PATTERN.test(entry.message ?? '')
+const isErrorLine = (entry: LogEntry) => ERROR_PATTERN.test(entry.message ?? '')
 
 export const getDeploymentLogs = readTool({
   name: 'get_deployment_logs',
   title: 'Get Sevalla deployment logs',
   description:
-    'Returns the build and rollout log of a deployment of a Sevalla application or static site, one line per entry, by default the last 100 lines. errors_only keeps lines with an error severity or mentioning errors, failures or exceptions. Running application logs: search_runtime_logs.',
+    'Returns the build and rollout log of a deployment of a Sevalla application or static site, one line per entry, by default the last 100 lines. errors_only keeps lines mentioning errors, failures or exceptions. Running application logs: search_runtime_logs.',
   input: z
     .object({
       service_type: serviceType,
@@ -138,7 +135,7 @@ export const rollbackDeployment = writeTool('update', {
   name: 'rollback_deployment',
   title: 'Roll back Sevalla service',
   description:
-    'Rolls a Sevalla application or static site back to an earlier successful deployment, reusing its build. Applications return to their most recent successful deployment; static sites to deployment_id or, by default, the last successful one before the current. get_deployment reports progress.',
+    'Rolls a Sevalla application or static site back to an earlier successful deployment. Applications redeploy the build of their most recent successful one. Static sites rebuild the commit of deployment_id or, by default, of the last successful one before the current, with the current settings and variables. get_deployment reports progress.',
   input: z
     .object({
       service_type: serviceType,

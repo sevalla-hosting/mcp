@@ -45,6 +45,11 @@ export const summarizeScaling = (strategy: ApiRecord | null | undefined) => {
   })
 }
 
+const summarizeProbe = (probe: ApiRecord | null | undefined) => {
+  const fields = omitEmpty(probe ?? {})
+  return Object.keys(fields).length > 0 ? fields : undefined
+}
+
 export const summarizeProcess = (process: ApiRecord) =>
   omitEmpty({
     id: process.id,
@@ -59,6 +64,10 @@ export const summarizeProcess = (process: ApiRecord) =>
     scaling: summarizeScaling(process.scaling_strategy),
     schedule: process.schedule,
     time_zone: process.schedule ? process.time_zone : undefined,
+    job_start_policy: process.job_start_policy,
+    readiness_probe: summarizeProbe(process.readiness_probe),
+    liveness_probe: summarizeProbe(process.liveness_probe),
+    disk: process.disk,
     internal_hostname: process.internal_hostname,
   })
 
@@ -157,7 +166,7 @@ export const getApplication = readTool({
   name: 'get_application',
   title: 'Get Sevalla application',
   description:
-    'Returns a Sevalla application with its processes (web, worker, cron, job) and their scaling, domains with DNS records and verification errors, and latest deployment. History: list_deployments. Logs: search_runtime_logs, get_deployment_logs.',
+    'Returns a Sevalla application with its processes (web, worker, cron, job) with scaling, probes, disks and job timing, domains with DNS records and verification errors, and latest deployment. History: list_deployments. Logs: search_runtime_logs, get_deployment_logs.',
   input: z.object({ application_id: uuid('Application ID (list_services).'), detail }).strict(),
   run: async ({ application_id, detail }, { api }) => {
     const base = encodePath`/applications/${application_id}`

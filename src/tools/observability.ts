@@ -68,7 +68,7 @@ export const searchRuntimeLogs = readTool({
     .object({
       application_id: uuid('Application ID (list_services).'),
       ...timeWindow,
-      severity: z.enum(SEVERITIES).optional().describe('Only entries with this severity.'),
+      severity: z.enum(SEVERITIES).optional().describe('Only this severity; ERROR includes all stderr output.'),
       search: z
         .string()
         .min(1)

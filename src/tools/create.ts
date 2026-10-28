@@ -98,8 +98,7 @@ const deployPaths = z.array(z.string().min(1).max(255)).min(1).max(50).optional(
 export const createStaticSite = writeTool('create', {
   name: 'create_static_site',
   title: 'Create Sevalla static site',
-  description:
-    'Creates a Sevalla static site from a Git repository and starts its first build. Omitted build settings are detected automatically.',
+  description: 'Creates a Sevalla static site from a Git repository and starts its first build.',
   input: z
     .object({
       display_name: displayName('static site'),

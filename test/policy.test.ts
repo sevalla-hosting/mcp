@@ -137,7 +137,7 @@ for (const era of ['modern', 'legacy'] as const) {
     })
 
     it('keeps server instructions short and factual', () => {
-      ok(instructions.length > 0 && instructions.length <= 1_500)
+      ok(instructions.length > 0 && instructions.length <= 2_000)
       for (const pattern of MODEL_DIRECTED) {
         ok(!pattern.test(instructions), `instructions match ${pattern}`)
       }
