@@ -771,7 +771,7 @@ export const startFakeApi = async (): Promise<FakeApi> => {
         id: IDS.newResource,
         name: 'new-site',
         display_name: body.display_name,
-        status: 'deploymentInProgress',
+        status: null,
         hostname: 'new-site.sevalla.page',
         repo_url: body.repo_url,
         default_branch: body.default_branch,

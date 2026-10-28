@@ -13,6 +13,20 @@ const clusterId = uuid('Region ID (get_platform_options).')
 
 const projectId = uuid('Project to add the service to.').optional()
 
+const deploy = z.boolean().default(true).describe('Start the first deployment.')
+
+const startFirstDeployment = async (api: SevallaClient, path: string) => {
+  try {
+    const deployment = summarizeDeployment(await api.post<ApiRecord>(path, {}))
+    return { deployment, note: 'get_deployment reports the progress of the first deployment.' }
+  } catch (err) {
+    if (!(err instanceof ApiError)) {
+      throw err
+    }
+    return { deployment_error: formatApiErrorShort(err) }
+  }
+}
+
 export const createApplication = writeTool('create', {
   name: 'create_application',
   title: 'Create Sevalla application',
@@ -36,7 +50,7 @@ export const createApplication = writeTool('create', {
       docker_image: z.string().min(1).max(512).optional().describe('Image, e.g. nginx:1.27, for source dockerImage.'),
       docker_registry_credential_id: uuid('Registry credential for private images.').optional(),
       project_id: projectId,
-      deploy: z.boolean().default(true).describe('Start the first deployment.'),
+      deploy,
     })
     .strict(),
   run: async (args, { api }) => {
@@ -60,18 +74,7 @@ export const createApplication = writeTool('create', {
         project_id: args.project_id,
       }),
     )
-    let deployment: ReturnType<typeof summarizeDeployment>
-    let deploymentError: string | undefined
-    if (args.deploy) {
-      try {
-        deployment = summarizeDeployment(await api.post<ApiRecord>(encodePath`/applications/${app.id}/deployments`, {}))
-      } catch (err) {
-        if (!(err instanceof ApiError)) {
-          throw err
-        }
-        deploymentError = formatApiErrorShort(err)
-      }
-    }
+    const started = args.deploy ? await startFirstDeployment(api, encodePath`/applications/${app.id}/deployments`) : {}
     return toolResult(
       omitEmpty({
         application: omitEmpty({
@@ -85,9 +88,7 @@ export const createApplication = writeTool('create', {
           docker_image: app.docker_image,
           build_type: app.build_type,
         }),
-        deployment,
-        deployment_error: deploymentError,
-        note: deployment ? 'get_deployment reports the progress of the first deployment.' : undefined,
+        ...started,
       }),
     )
   },
@@ -98,7 +99,7 @@ const deployPaths = z.array(z.string().min(1).max(255)).min(1).max(50).optional(
 export const createStaticSite = writeTool('create', {
   name: 'create_static_site',
   title: 'Create Sevalla static site',
-  description: 'Creates a Sevalla static site from a Git repository and starts its first build.',
+  description: 'Creates a Sevalla static site from a Git repository and starts its first deployment.',
   input: z
     .object({
       display_name: displayName('static site'),
@@ -124,25 +125,29 @@ export const createStaticSite = writeTool('create', {
       index_file: z.string().min(1).max(255).optional().describe('e.g. index.html'),
       error_file: z.string().min(1).max(255).optional().describe('Not-found page, e.g. 404.html'),
       project_id: projectId,
+      deploy,
     })
     .strict(),
-  run: async (args, { api }) => {
+  run: async ({ deploy, ...args }, { api }) => {
     if (args.allow_deploy_paths && args.ignore_deploy_paths) {
       throw new ToolInputError('allow_deploy_paths and ignore_deploy_paths are mutually exclusive.')
     }
     const site = await api.post<ApiRecord>('/static-sites', omitEmpty({ ...args }))
-    return toolResult({
-      static_site: omitEmpty({
-        id: site.id,
-        name: site.name,
-        display_name: site.display_name,
-        status: site.status,
-        hostname: site.hostname,
-        repo_url: site.repo_url,
-        default_branch: site.default_branch,
+    const started = deploy ? await startFirstDeployment(api, encodePath`/static-sites/${site.id}/deployments`) : {}
+    return toolResult(
+      omitEmpty({
+        static_site: omitEmpty({
+          id: site.id,
+          name: site.name,
+          display_name: site.display_name,
+          status: site.status,
+          hostname: site.hostname,
+          repo_url: site.repo_url,
+          default_branch: site.default_branch,
+        }),
+        ...started,
       }),
-      note: 'The first build starts automatically; list_deployments reports its progress.',
-    })
+    )
   },
 })
 

@@ -40,7 +40,7 @@ export const getDeployment = readTool({
   name: 'get_deployment',
   title: 'Get Sevalla deployment',
   description:
-    'Returns a deployment of a Sevalla application or static site: status, steps, branch, commit, image and timing. It reports the progress of deployments started by trigger_deployment or rollback_deployment. Output and failure causes: get_deployment_logs.',
+    'Returns a deployment of a Sevalla application or static site: status, steps, branch, commit, image and timing. Output and failure causes: get_deployment_logs.',
   input: z.object({ service_type: serviceType, service_id: serviceId, deployment_id: deploymentId, detail }).strict(),
   run: async ({ service_type, service_id, deployment_id, detail }, { api }) => {
     const deployment = await api.get<ApiRecord>(
