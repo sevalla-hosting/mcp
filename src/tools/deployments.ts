@@ -53,7 +53,7 @@ export const getDeployment = readTool({
   },
 })
 
-const ERROR_PATTERN = /\b(error|errors|failed|failure|exception|fatal|panic|cannot|denied)\b|\berr!/i
+const ERROR_PATTERN = /(error|exception)s?\b|\b(failed|failure|fatal|panic|cannot|denied|not found)\b|\berr!/i
 const MAX_SCAN = 2000
 
 const isErrorLine = (entry: LogEntry) => ERROR_PATTERN.test(entry.message ?? '')
@@ -157,7 +157,8 @@ export const rollbackDeployment = writeTool('update', {
     let target = deployment_id
     if (!target) {
       const page = await api.get<Page<ApiRecord>>(`${base}/deployments`, { limit: 25 })
-      target = page.data.slice(1).find((d) => d.status === 'success')?.id
+      const live = page.data.findIndex((d) => d.status === 'success')
+      target = page.data.slice(live + 1).find((d) => d.status === 'success')?.id
       if (!target) {
         throw new ToolInputError('No earlier successful deployment was found for this static site.')
       }

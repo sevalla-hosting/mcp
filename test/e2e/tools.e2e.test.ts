@@ -215,8 +215,10 @@ describe('e2e: deployments', () => {
       errors_only: true,
     })
     const lines = res.text.split('\n').slice(1)
-    strictEqual(lines.length, 2)
-    ok(lines[0]?.includes('npm ERR!'))
+    strictEqual(lines.length, 4)
+    ok(lines[0]?.includes('ModuleNotFoundError'))
+    ok(lines[1]?.includes('vite: not found'))
+    ok(lines[2]?.includes('npm ERR!'))
     strictEqual(last('getApplicationDeploymentLogsV3').query.limit, '2000')
   })
 
@@ -260,9 +262,34 @@ describe('e2e: deployments', () => {
       deployment_id: IDS.deployment,
     })
     strictEqual(misuse.isError, true)
-    const site = await mcp.call('rollback_deployment', { service_type: 'static_site', service_id: IDS.site })
+    const site = await mcp.call('rollback_deployment', {
+      service_type: 'static_site',
+      service_id: IDS.site,
+      deployment_id: IDS.sitePreviousDeployment,
+    })
     strictEqual(site.json.redeployed_from, IDS.sitePreviousDeployment)
     deepStrictEqual(last('deployStaticSiteV3').body, { deployment_id: IDS.sitePreviousDeployment })
+  })
+
+  it('rolls a static site back past a failed newest deployment to the one before the live one', async () => {
+    const nothingOlder = await mcp.call('rollback_deployment', { service_type: 'static_site', service_id: IDS.site })
+    strictEqual(nothingOlder.isError, true)
+    ok(nothingOlder.text.includes('No earlier successful deployment'))
+    h.api.override('listStaticSiteDeploymentsV3', () => ({
+      body: {
+        data: [
+          { id: IDS.siteDeployment, status: 'failed' },
+          { id: IDS.sitePreviousDeployment, status: 'success' },
+          { id: IDS.newResource, status: 'success' },
+        ],
+        total: 3,
+        offset: 0,
+        limit: 25,
+      },
+    }))
+    const site = await mcp.call('rollback_deployment', { service_type: 'static_site', service_id: IDS.site })
+    strictEqual(site.json.redeployed_from, IDS.newResource)
+    deepStrictEqual(last('deployStaticSiteV3').body, { deployment_id: IDS.newResource })
   })
 })
 

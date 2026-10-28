@@ -499,6 +499,8 @@ export const startFakeApi = async (): Promise<FakeApi> => {
       body: [
         logEntry(-599_000, 'INFO', 'Cloning repository'),
         logEntry(-595_000, 'ERROR', '#5 [build 2/4] RUN npm ci'),
+        logEntry(-594_000, 'ERROR', "ModuleNotFoundError: No module named 'flask'"),
+        logEntry(-593_000, 'ERROR', 'sh: 1: vite: not found'),
         logEntry(-598_000, 'INFO', 'npm ci'),
         logEntry(-590_000, 'INFO', 'npm ERR! Missing script: "build"'),
         logEntry(-589_000, 'ERROR', 'Build failed with exit code 1'),
