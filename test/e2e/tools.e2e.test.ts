@@ -617,7 +617,7 @@ describe('e2e: create tools', () => {
     ok(res.text.includes('docker_image is required'))
   })
 
-  it('creates a static site', async () => {
+  it('creates a static site without deploying it', async () => {
     const res = await mcp.call('create_static_site', {
       display_name: 'Docs',
       repo_url: 'https://github.com/acme/docs',
@@ -631,6 +631,20 @@ describe('e2e: create tools', () => {
       default_branch: 'main',
       build_command: 'npm run build',
     })
+    strictEqual(res.json.deployment, undefined)
+    ok(res.json.note.includes('No deployment was started'))
+    strictEqual(h.api.forOperation('deployStaticSiteV3').length, 0)
+  })
+
+  it('creates a static site and starts its first deployment', async () => {
+    const res = await mcp.call('create_static_site', {
+      display_name: 'Docs',
+      repo_url: 'https://github.com/acme/docs',
+      default_branch: 'main',
+      deploy: true,
+    })
+    strictEqual(res.json.deployment.status, 'waiting')
+    strictEqual(last('deployStaticSiteV3').path, `/v3/static-sites/${IDS.newResource}/deployments`)
   })
 
   it('refuses both deploy path rules at once', async () => {
