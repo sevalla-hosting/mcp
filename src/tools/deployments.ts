@@ -148,7 +148,7 @@ export const rollbackDeployment = writeTool('update', {
     if (service_type === 'application') {
       if (deployment_id) {
         throw new ToolInputError(
-          'Applications always roll back to their most recent successful deployment; deployment_id applies to static sites only.',
+          'Applications roll back to the last successful deployment of another commit; deployment_id applies to static sites only.',
         )
       }
       const deployment = await api.post<ApiRecord>(`${base}/deployments/rollback`)
