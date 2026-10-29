@@ -102,8 +102,20 @@ describe('e2e: get_application / get_static_site / get_database / get_platform_o
     strictEqual(custom.dns_records[0].type, 'TXT')
     strictEqual(res.json.latest_deployment.commit, 'abcdef1')
     strictEqual(res.json.latest_deployment.commit_message, 'Fix checkout flow')
+    strictEqual(res.json.latest_deployment.dockerfile_id, IDS.dockerfile)
+    strictEqual(res.json.build_type, 'ingot')
+    strictEqual(res.json.suspension_status, undefined)
     ok(!res.text.includes('author_img'))
     strictEqual(res.json.more, undefined)
+  })
+
+  it('shows where a suspension stands until it completes', async () => {
+    h.api.override('getApplicationV3', () => ({
+      body: { id: IDS.app, name: 'api-prod', is_suspended: true, suspension_status: 'suspending' },
+    }))
+    const res = await mcp.call('get_application', { application_id: IDS.app })
+    strictEqual(res.json.suspended, true)
+    strictEqual(res.json.suspension_status, 'suspending')
   })
 
   it('shows the health checks, disk and deployment timing of processes', async () => {

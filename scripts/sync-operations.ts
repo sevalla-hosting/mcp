@@ -45,6 +45,11 @@ const trimSchema = (schema: Json | undefined, depth = 0, keepPattern = false): J
     }
     return out
   }
+  if (Array.isArray(schema.type) && schema.type.includes('null')) {
+    const types = schema.type.filter((t: unknown) => t !== 'null')
+    const single = trimSchema({ ...schema, type: types.length === 1 ? types[0] : types }, depth, keepPattern)
+    return { ...single, nullable: true }
+  }
   const out: Json = {}
   if (schema.type !== undefined) {
     out.type = schema.type

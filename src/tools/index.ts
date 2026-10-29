@@ -23,7 +23,7 @@ export const TOOLS: Tool[] = [
 
 export const serverInstructions = (): string =>
   [
-    "Sevalla is a platform for hosting applications, static sites and databases. Applications are built from a Git repository or a Docker image and run as processes (web, worker, cron or job) in a cluster (region). Static sites are built from Git and served from Cloudflare's edge. Databases are managed PostgreSQL, MySQL, MariaDB, Redis or Valkey servers.",
+    "Sevalla is a platform for hosting applications, static sites and databases. Applications are built from a Git repository or a Docker image and run as processes (web, worker, cron or job) in a cluster (region). Ingot, the default builder, generates a Dockerfile from the source (listApplicationDockerfilesV3); Nixpacks is deprecated. Static sites are built from Git and served from Cloudflare's edge. Databases are managed PostgreSQL, MySQL, MariaDB, Redis or Valkey servers.",
     'Resources belong to the company of the connected API key and can be grouped into projects. Identifiers are UUIDs; list_services returns them together with names.',
     'Deployments run asynchronously: trigger_deployment and rollback_deployment return a deployment whose progress get_deployment reports. Environment variable and scaling changes apply at the next deployment.',
     'Environment variable values are withheld; their keys and scoping are listed.',

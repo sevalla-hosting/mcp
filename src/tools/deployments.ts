@@ -135,7 +135,7 @@ export const rollbackDeployment = writeTool('update', {
   name: 'rollback_deployment',
   title: 'Roll back Sevalla service',
   description:
-    'Rolls a Sevalla application or static site back to an earlier successful deployment. Applications redeploy the build of their most recent successful one. Static sites rebuild the commit of deployment_id or, by default, of the last successful one before the current, with the current settings and variables. get_deployment reports progress.',
+    'Rolls a Sevalla application or static site back to an earlier successful deployment. Applications reuse the build of the last successful deployment of another commit (not found if none). Static sites rebuild the commit of deployment_id or, by default, of the last successful one before the current, with the current settings and variables.',
   input: z
     .object({
       service_type: serviceType,

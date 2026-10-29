@@ -16,6 +16,7 @@ import {
   type Operation,
 } from '../src/sevalla/operations.ts'
 import { TOOLS } from '../src/tools/index.ts'
+import { buildSnapshot } from '../scripts/sync-operations.ts'
 
 const op = (id: string): Operation => {
   const found = getOperation(id)
@@ -29,8 +30,8 @@ const UUID = '12345678-1234-4123-8123-123456789abc'
 
 describe('operation snapshot', () => {
   it('contains every operation of the v3 API exactly once', () => {
-    strictEqual(OPERATIONS.length, 252)
-    strictEqual(new Set(OPERATIONS.map((o) => o.id)).size, 252)
+    strictEqual(OPERATIONS.length, 249)
+    strictEqual(new Set(OPERATIONS.map((o) => o.id)).size, 249)
     for (const o of OPERATIONS) {
       ok(o.path.startsWith('/'), o.id)
       ok(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(o.method), o.id)
@@ -44,6 +45,20 @@ describe('operation snapshot', () => {
         ok(o.path.includes(`{${p.name}}`), `${o.id}.${p.name}`)
       }
     }
+  })
+  it('records OpenAPI 3.1 nullable types like nullable unions', () => {
+    const field = (schema: Record<string, unknown>) => {
+      const body = { type: 'object', properties: { f: schema } }
+      const spec = {
+        paths: {
+          '/x': { post: { operationId: 'x', requestBody: { content: { 'application/json': { schema: body } } } } },
+        },
+      }
+      return buildSnapshot(spec).operations[0].body.properties.f
+    }
+    const expected = { type: 'string', description: 'Branch', nullable: true }
+    deepStrictEqual(field({ type: ['string', 'null'], description: 'Branch' }), expected)
+    deepStrictEqual(field({ anyOf: [{ type: 'string' }, { type: 'null' }], description: 'Branch' }), expected)
   })
 })
 
@@ -137,7 +152,7 @@ describe('classification', () => {
     for (const o of OPERATIONS.filter((x) => isExecutable(x))) {
       counts[o.class] = (counts[o.class] ?? 0) + 1
     }
-    deepStrictEqual(counts, { read: 60, create: 13, update: 76, delete: 31 })
+    deepStrictEqual(counts, { read: 60, create: 13, update: 73, delete: 31 })
     strictEqual(OPERATIONS.filter((o) => o.dedicatedTool).length, 69)
   })
 
