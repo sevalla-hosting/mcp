@@ -654,8 +654,8 @@
           },
           "build_type": {
             "type": "string",
-            "description": "Build strategy to use. `nixpacks` - auto-detected build system. `railpack` - auto-detected build system, successor to Nixpacks. `dockerfile` - build using a Dockerfile. `pack` - build using Cloud Nat…",
-            "enum": ["dockerfile", "pack", "nixpacks", "railpack"]
+            "description": "Build strategy to use. `ingot` - build using a Dockerfile that Ingot generates from the source code on every build. Each generated version is kept and can be listed under the application's Dockerfile…",
+            "enum": ["ingot", "dockerfile", "railpack", "pack", "nixpacks"]
           },
           "build_path": {
             "type": "string",
@@ -689,7 +689,7 @@
           },
           "nixpacks_version": {
             "type": "string",
-            "description": "Pinned Nixpacks version. When not set, the platform default version is used. Only applies when build type is `nixpacks`.",
+            "description": "Pinned Nixpacks version. When not set, switching to `nixpacks` pins `1.41` and an app already on `nixpacks` keeps its current version. Only applies to the deprecated `nixpacks` build type.",
             "enum": ["1.29", "1.39", "1.41"]
           },
           "buildpacks": {
@@ -867,7 +867,7 @@
       "path": "/applications/{id}/activate",
       "tag": "Applications",
       "summary": "Activate application",
-      "description": "Activate a previously suspended application, restoring all processes to their running state. The operation is asynchronous - the application status will transition once activation completes.",
+      "description": "Activate a suspended application. The request returns right away and the activation runs in the background: web and worker processes are scaled back to their configured instance counts and cron schedules resume. A cron that missed scheduled runs during the suspension starts one run straight away. Poll the get application endpoint until `suspension_status` is `active`. Deployments are skipped whil…",
       "params": [
         {
           "name": "id",
@@ -1149,7 +1149,7 @@
       "path": "/applications/{id}/deployments/rollback",
       "tag": "Applications",
       "summary": "Rollback deployment",
-      "description": "Roll back an application to the most recent successful deployment. This creates a new deployment that reuses the build artifact from the previous successful deployment, skipping the build step entirely.",
+      "description": "Roll back an application to its most recent successful deployment of a different commit than the latest deployment. This creates a new deployment that reuses the build artifact of that deployment, skipping the build step entirely. Returns 404 when no successful deployment of another commit exists.",
       "params": [
         {
           "name": "id",
@@ -1324,6 +1324,89 @@
           "in": "path",
           "required": true,
           "description": "Deployment identifier",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        }
+      ],
+      "body": null,
+      "bodyRequired": false,
+      "permissions": ["APP:READ"]
+    },
+    {
+      "id": "listApplicationDockerfilesV3",
+      "method": "GET",
+      "path": "/applications/{id}/dockerfiles",
+      "tag": "Applications",
+      "summary": "List Dockerfiles",
+      "description": "List the Dockerfiles an application was built from, newest version first: the ones Sevalla generated with Ingot (`source: ingot`) and the ones from your repository (`source: user`). A build adds a new version only when its Dockerfile, .dockerignore or source differs from the latest one, so the list shows every change. Each deployment points at its version through `dockerfile_id`. Applications tha…",
+      "params": [
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false,
+          "description": "Maximum number of items per page",
+          "schema": {
+            "type": "integer",
+            "default": 25,
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        {
+          "name": "offset",
+          "in": "query",
+          "required": false,
+          "description": "Number of items to skip",
+          "schema": {
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "maximum": 10000
+          }
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Application identifier",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        }
+      ],
+      "body": null,
+      "bodyRequired": false,
+      "permissions": ["APP:READ"]
+    },
+    {
+      "id": "getApplicationDockerfileV3",
+      "method": "GET",
+      "path": "/applications/{id}/dockerfiles/{dockerfile_id}",
+      "tag": "Applications",
+      "summary": "Get Dockerfile",
+      "description": "Retrieve one Dockerfile version of an application, with the Dockerfile, its .dockerignore and whether Sevalla generated it with Ingot or it came from your repository. Use it with the `dockerfile_id` of a deployment to see what that deployment was built from, or fetch two versions to compare them.",
+      "params": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Application identifier",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        {
+          "name": "dockerfile_id",
+          "in": "path",
+          "required": true,
+          "description": "Dockerfile identifier, as returned in `dockerfile_id` of a deployment",
           "schema": {
             "type": "string",
             "format": "uuid",
@@ -4196,6 +4279,65 @@
       "permissions": ["APP:READ"]
     },
     {
+      "id": "listProcessCronRunsV3",
+      "method": "GET",
+      "path": "/applications/{id}/processes/{process_id}/runs",
+      "tag": "Applications",
+      "summary": "List cron runs",
+      "description": "Retrieve the run history of a cron process, newest first. Each run shows when it was due, when it started and finished, its outcome, the failure reason and exit code, how many times it was retried, and whether it was scheduled or triggered manually. Runs are kept for 30 days. Processes of other types have no runs.",
+      "params": [
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false,
+          "description": "Maximum number of items per page",
+          "schema": {
+            "type": "integer",
+            "default": 25,
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        {
+          "name": "offset",
+          "in": "query",
+          "required": false,
+          "description": "Number of items to skip",
+          "schema": {
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "maximum": 10000
+          }
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Application identifier",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        {
+          "name": "process_id",
+          "in": "path",
+          "required": true,
+          "description": "Process identifier",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        }
+      ],
+      "body": null,
+      "bodyRequired": false,
+      "permissions": ["APP:READ"]
+    },
+    {
       "id": "openTerminalV3",
       "method": "GET",
       "path": "/applications/{id}/processes/{process_id}/terminal",
@@ -4265,7 +4407,7 @@
       "path": "/applications/{id}/processes/{process_id}/trigger",
       "tag": "Applications",
       "summary": "Trigger cron job",
-      "description": "Manually trigger an immediate execution of a cron process. This creates a one-off run outside of the regular cron schedule. The process must be of type `cron`.",
+      "description": "Manually trigger an immediate execution of a cron process. This creates a one-off run outside of the regular cron schedule. The process must be of type `cron`. The run uses the same job template as scheduled runs and shows up in the cron run history with the `manual` trigger. Returns 403 if the application or its company is suspended.",
       "params": [
         {
           "name": "id",
@@ -4316,68 +4458,6 @@
       ],
       "body": null,
       "bodyRequired": false,
-      "permissions": ["APP:UPDATE"]
-    },
-    {
-      "id": "getApplicationRateLimitV3",
-      "method": "GET",
-      "path": "/applications/{id}/rate-limit",
-      "tag": "Applications",
-      "summary": "Get rate limit",
-      "description": "Retrieve the current rate limiting configuration for an application. Rate limiting restricts each client IP to 100 requests per minute per hostname and applies the configured action when the limit is exceeded. If rate limiting has never been configured, returns the default state: disabled with the `challenge` action.",
-      "params": [
-        {
-          "name": "id",
-          "in": "path",
-          "required": true,
-          "description": "Application identifier",
-          "schema": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          }
-        }
-      ],
-      "body": null,
-      "bodyRequired": false,
-      "permissions": ["APP:READ"]
-    },
-    {
-      "id": "updateApplicationRateLimitV3",
-      "method": "PUT",
-      "path": "/applications/{id}/rate-limit",
-      "tag": "Applications",
-      "summary": "Update rate limit",
-      "description": "Update the rate limiting configuration for an application. Rate limiting restricts each client IP to 100 requests per minute per hostname across the application domains. When a client exceeds the limit, the configured action is applied: `challenge` requires the visitor to pass a managed challenge for 5 minutes, `throttle` blocks requests only while the rate stays above the limit, and `ban` blocks…",
-      "params": [
-        {
-          "name": "id",
-          "in": "path",
-          "required": true,
-          "description": "Application identifier",
-          "schema": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          }
-        }
-      ],
-      "body": {
-        "type": "object",
-        "properties": {
-          "is_enabled": {
-            "type": "boolean",
-            "description": "Whether rate limiting should be active"
-          },
-          "action": {
-            "type": "string",
-            "description": "Mitigation action to apply when a client IP exceeds the limit of 100 requests per minute. `challenge` - visitors must pass a managed challenge for 5 minutes. `throttle` - requests are blocked only wh…",
-            "enum": ["challenge", "throttle", "ban"]
-          }
-        },
-        "required": ["is_enabled", "action"]
-      },
-      "bodyRequired": true,
       "permissions": ["APP:UPDATE"]
     },
     {
@@ -4625,7 +4705,7 @@
       "path": "/applications/{id}/suspend",
       "tag": "Applications",
       "summary": "Suspend application",
-      "description": "Suspend a running application by stopping all of its processes. The application configuration, environment variables, and deployment history are preserved. Use the activate endpoint to restore the application.",
+      "description": "Suspend an application by stopping all of its processes. The request returns right away and the suspension runs in the background: deployments in progress are cancelled, web and worker processes are scaled to zero, cron schedules are paused, and cron or job runs that are still executing are stopped (they get SIGTERM and are force-stopped 30 seconds later). New deployments and manual cron runs are…",
       "params": [
         {
           "name": "id",
@@ -7165,68 +7245,6 @@
       "permissions": ["LOAD_BALANCER:UPDATE"]
     },
     {
-      "id": "getLoadBalancerRateLimitV3",
-      "method": "GET",
-      "path": "/load-balancers/{id}/rate-limit",
-      "tag": "Load balancers",
-      "summary": "Get rate limit",
-      "description": "Retrieve the current rate limiting configuration for a load balancer. Rate limiting restricts each client IP to 100 requests per minute per hostname and applies the configured action when the limit is exceeded. If rate limiting has never been configured, returns the default state: disabled with the `challenge` action.",
-      "params": [
-        {
-          "name": "id",
-          "in": "path",
-          "required": true,
-          "description": "Load balancer identifier",
-          "schema": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          }
-        }
-      ],
-      "body": null,
-      "bodyRequired": false,
-      "permissions": ["LOAD_BALANCER:READ"]
-    },
-    {
-      "id": "updateLoadBalancerRateLimitV3",
-      "method": "PUT",
-      "path": "/load-balancers/{id}/rate-limit",
-      "tag": "Load balancers",
-      "summary": "Update rate limit",
-      "description": "Update the rate limiting configuration for a load balancer. Rate limiting restricts each client IP to 100 requests per minute per hostname across the load balancer domains. When a client exceeds the limit, the configured action is applied: `challenge` requires the visitor to pass a managed challenge for 5 minutes, `throttle` blocks requests only while the rate stays above the limit, and `ban` blo…",
-      "params": [
-        {
-          "name": "id",
-          "in": "path",
-          "required": true,
-          "description": "Load balancer identifier",
-          "schema": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          }
-        }
-      ],
-      "body": {
-        "type": "object",
-        "properties": {
-          "is_enabled": {
-            "type": "boolean",
-            "description": "Whether rate limiting should be active"
-          },
-          "action": {
-            "type": "string",
-            "description": "Mitigation action to apply when a client IP exceeds the limit of 100 requests per minute. `challenge` - visitors must pass a managed challenge for 5 minutes. `throttle` - requests are blocked only wh…",
-            "enum": ["challenge", "throttle", "ban"]
-          }
-        },
-        "required": ["is_enabled", "action"]
-      },
-      "bodyRequired": true,
-      "permissions": ["LOAD_BALANCER:UPDATE"]
-    },
-    {
       "id": "listObjectStoragesV3",
       "method": "GET",
       "path": "/object-storage",
@@ -8064,8 +8082,8 @@
               },
               "build_type": {
                 "type": "string",
-                "description": "Build strategy for preview apps. `nixpacks` - auto-detected build system. `railpack` - auto-detected build system, successor to Nixpacks. `dockerfile` - build using a Dockerfile. `pack` - build using…",
-                "enum": ["dockerfile", "pack", "nixpacks", "railpack"]
+                "description": "Build strategy for preview apps. `ingot` - build using a Dockerfile that Ingot generates from the source code. `dockerfile` - build using the Dockerfile from your repository. `railpack` - auto-detect…",
+                "enum": ["ingot", "dockerfile", "railpack", "pack", "nixpacks"]
               },
               "build_path": {
                 "type": "string",
@@ -8583,8 +8601,8 @@
               },
               "build_type": {
                 "type": "string",
-                "description": "Build strategy for preview apps. `nixpacks` - auto-detected build system. `railpack` - auto-detected build system, successor to Nixpacks. `dockerfile` - build using a Dockerfile. `pack` - build using…",
-                "enum": ["dockerfile", "pack", "nixpacks", "railpack"]
+                "description": "Build strategy for preview apps. `ingot` - build using a Dockerfile that Ingot generates from the source code. `dockerfile` - build using the Dockerfile from your repository. `railpack` - auto-detect…",
+                "enum": ["ingot", "dockerfile", "railpack", "pack", "nixpacks"]
               },
               "build_path": {
                 "type": "string",
@@ -11301,68 +11319,6 @@
       ],
       "body": null,
       "bodyRequired": false,
-      "permissions": ["STATIC_SITE:UPDATE"]
-    },
-    {
-      "id": "getStaticSiteRateLimitV3",
-      "method": "GET",
-      "path": "/static-sites/{id}/rate-limit",
-      "tag": "Static sites",
-      "summary": "Get rate limit",
-      "description": "Retrieve the current rate limiting configuration for a static site. Rate limiting restricts each client IP to 100 requests per minute per hostname and applies the configured action when the limit is exceeded. If rate limiting has never been configured, returns the default state: disabled with the `challenge` action.",
-      "params": [
-        {
-          "name": "id",
-          "in": "path",
-          "required": true,
-          "description": "Static site identifier",
-          "schema": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          }
-        }
-      ],
-      "body": null,
-      "bodyRequired": false,
-      "permissions": ["STATIC_SITE:READ"]
-    },
-    {
-      "id": "updateStaticSiteRateLimitV3",
-      "method": "PUT",
-      "path": "/static-sites/{id}/rate-limit",
-      "tag": "Static sites",
-      "summary": "Update rate limit",
-      "description": "Update the rate limiting configuration for a static site. Rate limiting restricts each client IP to 100 requests per minute per hostname across the static site domains. When a client exceeds the limit, the configured action is applied: `challenge` requires the visitor to pass a managed challenge for 5 minutes, `throttle` blocks requests only while the rate stays above the limit, and `ban` blocks …",
-      "params": [
-        {
-          "name": "id",
-          "in": "path",
-          "required": true,
-          "description": "Static site identifier",
-          "schema": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          }
-        }
-      ],
-      "body": {
-        "type": "object",
-        "properties": {
-          "is_enabled": {
-            "type": "boolean",
-            "description": "Whether rate limiting should be active"
-          },
-          "action": {
-            "type": "string",
-            "description": "Mitigation action to apply when a client IP exceeds the limit of 100 requests per minute. `challenge` - visitors must pass a managed challenge for 5 minutes. `throttle` - requests are blocked only wh…",
-            "enum": ["challenge", "throttle", "ban"]
-          }
-        },
-        "required": ["is_enabled", "action"]
-      },
-      "bodyRequired": true,
       "permissions": ["STATIC_SITE:UPDATE"]
     },
     {

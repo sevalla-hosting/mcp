@@ -118,7 +118,7 @@ export const searchDocs = readTool({
     'Searches the Sevalla documentation (docs.sevalla.com): features, settings, limits, builds, frameworks and migration guides. Returns the best-matching pages with their most relevant section. It reads public docs, not the account.',
   input: z
     .object({
-      query: z.string().min(2).max(200).describe('What to look up, e.g. "nixpacks node version".'),
+      query: z.string().min(2).max(200).describe('What to look up, e.g. "build node version".'),
       limit: z.number().int().min(1).max(5).default(3).describe('Maximum pages returned.'),
     })
     .strict(),

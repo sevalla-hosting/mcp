@@ -21,6 +21,7 @@ export const IDS = {
   domain: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   missing: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
   newResource: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  dockerfile: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
 }
 
 export const TOKENS = {
@@ -85,6 +86,7 @@ const deployment = (id: string, status: string, offsetMs: number, extra: Record<
   finished_at: iso(offsetMs + 120_000),
   created_at: iso(offsetMs - 5_000),
   updated_at: iso(offsetMs + 120_000),
+  dockerfile_id: IDS.dockerfile,
   ...extra,
 })
 
@@ -380,13 +382,14 @@ export const startFakeApi = async (): Promise<FakeApi> => {
                 hibernate_after_seconds: null,
                 auto_deploy: true,
                 is_suspended: worldOf(token).suspended.has(params.id),
+                suspension_status: worldOf(token).suspended.has(params.id) ? 'suspended' : 'active',
                 is_cdn_enabled: true,
                 is_edge_cache_enabled: false,
                 git_type: 'github',
                 repo_url: 'https://github.com/acme/api',
                 default_branch: 'main',
                 docker_image: null,
-                build_type: 'nixpacks',
+                build_type: 'ingot',
                 build_path: null,
                 pack_builder: null,
                 nixpacks_version: null,
@@ -763,7 +766,7 @@ export const startFakeApi = async (): Promise<FakeApi> => {
         repo_url: body.repo_url ?? null,
         default_branch: body.default_branch ?? 'main',
         docker_image: body.docker_image ?? null,
-        build_type: 'nixpacks',
+        build_type: 'ingot',
       },
     }),
     createStaticSiteV3: ({ body }) => ({
